@@ -1,0 +1,87 @@
+name: Deploy AAB to Google Play
+
+on:
+  push:
+    tags:
+      - 'v*' # Solo se activa con etiquetas que empiecen con 'v' (ej: v1.0.0)
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Útil si necesitas info de versiones anteriores
+
+      # - name: Configure Gradle for CI
+      #   run: |
+      #     cat <<EOF > android/gradle.properties
+      #     org.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError
+      #     android.useAndroidX=true
+      #     org.gradle.daemon=false
+      #     org.gradle.workers.max=2
+      #     EOF
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle' # <-- Cachea dependencias de Gradle automáticamente
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.5'
+          channel: 'stable'
+          cache: true # <-- Cachea el SDK de Flutter y el pub cache
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Decode secrets
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+          echo "${{ secrets.PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}" | base64 --decode > play-account.json
+
+      - name: Create key.properties
+        run: |
+          cat <<EOF > android/key.properties
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=upload-keystore.jks
+          EOF
+
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          # Extrae el nombre de la etiqueta (ej: v1.5.3+14)
+          TAG_NAME=${{ github.ref_name }}
+          # Quita la 'v' inicial (1.5.3+14)
+          VERSION_FULL=${TAG_NAME#v}
+          # Separa la versión (1.5.3) y el build (14)
+          VERSION_NAME=$(echo $VERSION_FULL | cut -d'+' -f1)
+          BUILD_NUMBER=$(echo $VERSION_FULL | cut -d'+' -f2 -s || echo "1")
+          
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Build AAB
+        run: |
+          flutter build appbundle --release \
+            --build-name=${{ steps.get_version.outputs.VERSION_NAME }} \
+            --build-number=${{ steps.get_version.outputs.BUILD_NUMBER }}
+
+      - name: Upload to Google Play (Open Testing)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: play-account.json
+          packageName: ${{ secrets.PACKAGE_NAME }}
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: production
+          status: completed
+          whatsNewDirectory: .github/whatsnew

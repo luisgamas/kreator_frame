@@ -19,7 +19,12 @@ import 'package:kreator_frame/infrastructure/infrastructure.dart';
 /// Acts as the single point of contact for all data-related operations.
 class DataSourceImpl extends DataSource {
   final InAppUpdateManager _inAppUpdateManager = InAppUpdateManager();
-  final dio = Dio();
+  final dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 15),
+    ),
+  );
 
   static const _channel = MethodChannel('kreator_frame/wallpaper');
 
@@ -140,14 +145,18 @@ class DataSourceImpl extends DataSource {
   /// Maps the response to WallpaperEntity objects.
   @override
   Future<List<WallpaperEntity>> getListOfWallpapers() async {
-    final response = await dio.get(Environment.userWallpapersUrl);
-    final wallpaperModel = WallpaperModel.fromJson(response.data);
+    try {
+      final response = await dio.get(Environment.userWallpapersUrl);
+      final wallpaperModel = WallpaperModel.fromJson(response.data);
 
-    final List<WallpaperEntity> wallpapersEntities = wallpaperModel.wallpapers
-        .map((wallpaper) => WallpaperMapper.wallpapersToEntity(wallpaper))
-        .toList();
+      final List<WallpaperEntity> wallpapersEntities = wallpaperModel.wallpapers
+          .map((wallpaper) => WallpaperMapper.wallpapersToEntity(wallpaper))
+          .toList();
 
-    return wallpapersEntities;
+      return wallpapersEntities;
+    } catch (e) {
+      return [];
+    }
   }
 
   /// Download a wallpaper from a URL and save it to the device gallery.

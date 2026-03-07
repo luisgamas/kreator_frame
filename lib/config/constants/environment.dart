@@ -24,7 +24,7 @@ class Environment {
 
   // * Variables of Dashboard Preference **DO NOT REMOVE**
   static const String dashName = 'Kreator Frame';
-  static const String dashVersion = '1.5.2';
+  static const String dashVersion = '1.5.3';
   static const String dashDeveloper = 'Luis Gamas';
 
   // * Variables for assets **DO NOT REMOVE**
@@ -37,11 +37,11 @@ class Environment {
   static const int wallpaperBothScreens = 3;  // FLAG_SYSTEM | FLAG_LOCK
 
   // * Variables for external links **DO NOT REMOVE**
-  static const String externalLinkTwitter = 'https://kutt.it/TwitterGamas';
-  static const String externalLinkInstagram = 'https://kutt.it/InstagramGamas';
-  static const String externalLinkWebsite = 'https://kutt.it/gamas-dev';
-  static const String externalLinkPrivacyPolicy = 'https://kutt.it/gamas-dev-privacy-policy';
-  static const String externalLinkTermsAndConditions = 'https://kutt.it/gamas-dev-terms-conditions';
+  static const String externalLinkTwitter = 'https://sink.gamas.workers.dev/gamas-x';
+  static const String externalLinkInstagram = 'https://sink.gamas.workers.dev/gamas-instagram';
+  static const String externalLinkWebsite = 'https://sink.gamas.workers.dev/gamas-website';
+  static const String externalLinkPrivacyPolicy = 'https://sink.gamas.workers.dev/gamas-privpol';
+  static const String externalLinkTermsAndConditions = 'https://sink.gamas.workers.dev/gamas-termcond';
   static const String externalLinkBuyMeACoffe = 'https://buymeacoffee.com/luisgamas';
   static const String externalLinkKLWP = 'https://play.google.com/store/apps/details?id=org.kustom.wallpaper';
   static const String externalLinkKWGT = 'https://play.google.com/store/apps/details?id=org.kustom.widget';

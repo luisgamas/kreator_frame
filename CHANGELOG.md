@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [v1.5.3] - 2026-03-07
+
+### Fixed
+- Migrated broken `kutt.it` external links to a new custom domain (`sink.gamas.workers.dev`) for social media, website, and policy documentation.
+- Optimized network timeouts (`connectTimeout`: 10s, `receiveTimeout`: 15s) in `DataSourceImpl` to improve responsiveness and prevent long loading states on poor connectivity.
+- Added robust error handling to `getListOfWallpapers` to gracefully handle network failures and return an empty list.
+
+### Changed
+- Adjusted donation button height to 48dp in `SettingsScreen` for improved UI consistency across the dashboard.
+
+---
+
 ## [v1.5.2] - 2026-02-18
 
 ### Added

@@ -1,0 +1,6 @@
+- Migrated external links to a new custom domain for better reliability.
+- Optimized network timeouts and error handling for a smoother wallpaper browsing experience.
+- Adjusted UI consistency by refining button dimensions in the settings screen.
+- Improved storage permissions for enhanced privacy.
+- Support for Material You dynamic colors.
+- Modernized interface with Material Design 3.
