@@ -69,10 +69,13 @@ This project is developed with dedication to the Kustom community. If you find i
 
 <div align="center">
   <a href="https://www.buymeacoffee.com/luisgamas">
-    <img src="https://raw.githubusercontent.com/LuisGamas/buttons-design/main/buy-me-a-coffe.png" width="220" alt="Buy Me a Coffee" />
+    <img src="https://raw.githubusercontent.com/LuisGamas/buttons-design/main/buy_me_a_coffe/buy_me_a_coffe.png" width="220" alt="Buy Me a Coffee" />
   </a>
   <a href="https://www.paypal.com/donate/?hosted_button_id=NYCR5M6QHZ7JC">
-    <img src="https://raw.githubusercontent.com/LuisGamas/buttons-design/main/paypal_donations.png" width="220" alt="Donate via PayPal" />
+    <img src="https://raw.githubusercontent.com/LuisGamas/buttons-design/main/paypal/paypal.png" width="220" alt="Donate via PayPal" />
+  </a>
+  <a href="https://github.com/sponsors/LuisGamas">
+    <img src="https://raw.githubusercontent.com/LuisGamas/buttons-design/main/github_sponsor/github_sponsor.png" width="220" alt="Sponsor on GitHub" />
   </a>
 </div>
 
