@@ -1,9 +1,7 @@
-import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kreator_frame/presentation/providers/providers.dart';
 import 'package:kreator_frame/domain/entities/tab_bar_entity.dart';
-import 'package:kreator_frame/shared/utils/app_constants.dart';
 
 // Mock for Preferences to avoid native plugin issues
 class MockPreferencesNotifier extends AppValuesPreferencesNotifier {
