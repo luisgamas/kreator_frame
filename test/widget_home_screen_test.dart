@@ -1,7 +1,10 @@
-import 'package:flutter_test/flutter_test.dart';
+// 📦 Package imports:
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:kreator_frame/presentation/providers/providers.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+// 🌎 Project imports:
 import 'package:kreator_frame/domain/entities/tab_bar_entity.dart';
+import 'package:kreator_frame/presentation/providers/providers.dart';
 
 // Mock for Preferences to avoid native plugin issues
 class MockPreferencesNotifier extends AppValuesPreferencesNotifier {

@@ -71,12 +71,17 @@ class RepositoryImpl extends Repository {
   Future<bool> downloadWallpaper(
     String url,
     String fileName, {
-    void Function(double)? onProgressUpdate,
+    void Function(double?)? onProgressUpdate,
   }) {
     return dataSource.downloadWallpaper(
       url,
       fileName,
       onProgressUpdate: onProgressUpdate,
     );
+  }
+
+  @override
+  void cancelDownloadWallpaper() {
+    dataSource.cancelDownloadWallpaper();
   }
 }

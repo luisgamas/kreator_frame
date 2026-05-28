@@ -45,6 +45,9 @@ abstract class Repository {
   Future<bool> downloadWallpaper(
     String url,
     String fileName, {
-    void Function(double)? onProgressUpdate,
+    void Function(double?)? onProgressUpdate,
   });
+
+  /// Cancels the currently active wallpaper download if one is in progress.
+  void cancelDownloadWallpaper();
 }

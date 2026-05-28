@@ -19,12 +19,12 @@ import 'package:kreator_frame/infrastructure/infrastructure.dart';
 /// Acts as the single point of contact for all data-related operations.
 class DataSourceImpl extends DataSource {
   final InAppUpdateManager _inAppUpdateManager = InAppUpdateManager();
-  final dio = Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 15),
-    ),
-  );
+  final Dio _dio;
+
+  DataSourceImpl({required this._dio});
+
+  /// Tracks the active download so it can be cancelled.
+  CancelToken? _activeCancelToken;
 
   static const _channel = MethodChannel('kreator_frame/wallpaper');
 
@@ -143,20 +143,35 @@ class DataSourceImpl extends DataSource {
 
   /// Retrieves the list of available wallpapers from the remote API.
   /// Maps the response to WallpaperEntity objects.
+  /// Returns an empty list on any error to allow graceful UI fallback.
   @override
   Future<List<WallpaperEntity>> getListOfWallpapers() async {
     try {
-      final response = await dio.get(Environment.userWallpapersUrl);
-      final wallpaperModel = WallpaperModel.fromJson(response.data);
+      final response = await _dio.get(Environment.userWallpapersUrl);
+      final wallpaperModel = WallpaperModel.fromJson(response.data as Map<String, dynamic>);
 
       final List<WallpaperEntity> wallpapersEntities = wallpaperModel.wallpapers
           .map((wallpaper) => WallpaperMapper.wallpapersToEntity(wallpaper))
           .toList();
 
       return wallpapersEntities;
+    } on DioException catch (e) {
+      debugPrint('DioException fetching wallpapers: ${e.type} - ${e.message}');
+      return [];
+    } on TypeError catch (e) {
+      debugPrint('JSON parsing error for wallpapers: $e');
+      return [];
     } catch (e) {
+      debugPrint('Unexpected error fetching wallpapers: $e');
       return [];
     }
+  }
+
+  /// Cancels the current wallpaper download if one is in progress.
+  @override
+  void cancelDownloadWallpaper() {
+    _activeCancelToken?.cancel('Download cancelled by user');
+    _activeCancelToken = null;
   }
 
   /// Download a wallpaper from a URL and save it to the device gallery.
@@ -171,54 +186,69 @@ class DataSourceImpl extends DataSource {
   /// Parameters:
   /// - [url]: URL of the wallpaper to download
   /// - [fileName]: Name of the file to save (without extension)
-  /// - [onProgressUpdate]: Optional callback to track download progress (0.0 to 1.0)
+  /// - [onProgressUpdate]: Optional callback to track download progress (0.0 to 1.0).
+  ///   If the server does not send Content-Length, the callback will receive null,
+  ///   indicating indeterminate progress.
   ///
   /// Returns [true] if the download and saving were successful, [false] in case of error.
   @override
   Future<bool> downloadWallpaper(
     String url,
     String fileName, {
-    void Function(double)? onProgressUpdate,
+    void Function(double?)? onProgressUpdate,
   }) async {
+    _activeCancelToken = CancelToken();
+
     try {
-      // Download the image using Dio with progress tracking
-      final response = await dio.get(
+      final response = await _dio.get(
         url,
+        cancelToken: _activeCancelToken,
         options: Options(
           responseType: ResponseType.bytes,
-          followRedirects: true,
         ),
         onReceiveProgress: (received, total) {
-          if (total != -1 && onProgressUpdate != null) {
-            // Calculate progress as percentage (0.0 to 1.0)
-            final progress = received / total;
-            onProgressUpdate(progress);
+          if (onProgressUpdate == null) return;
+          if (total != -1) {
+            onProgressUpdate(received / total);
+          } else {
+            // Content-Length unknown — signal indeterminate progress
+            onProgressUpdate(null);
           }
         },
       );
 
-      // Save the image to the gallery using MediaStore (Scoped Storage)
-      // image_gallery_saver_plus uses MediaStore on Android 10+ without needing permissions
+      _activeCancelToken = null;
+
       final result = await ImageGallerySaverPlus.saveImage(
-        Uint8List.fromList(response.data),
+        Uint8List.fromList(response.data as List<int>),
         quality: 100,
         name: fileName,
       );
 
-      // Verify if saving was successful
-      // result can return a Map with 'isSuccess' or directly a String with the path
+      onProgressUpdate?.call(0);
+
       if (result is Map && result['isSuccess'] == true) {
-        onProgressUpdate?.call(0);
         return true;
       } else if (result is String && result.isNotEmpty) {
-        onProgressUpdate?.call(0);
         return true;
       }
 
-      onProgressUpdate?.call(0);
       return false;
-    } catch (e) {
+    } on DioException catch (e) {
+      _activeCancelToken = null;
       onProgressUpdate?.call(0);
+
+      if (e.type == DioExceptionType.cancel) {
+        debugPrint('Download cancelled: ${e.message}');
+        return false;
+      } else {
+        debugPrint('DioException downloading wallpaper: ${e.type} - ${e.message}');
+        return false;
+      }
+    } catch (e) {
+      _activeCancelToken = null;
+      onProgressUpdate?.call(0);
+      debugPrint('Unexpected error downloading wallpaper: $e');
       return false;
     }
   }
@@ -237,7 +267,6 @@ class DataSourceImpl extends DataSource {
     List<WidgetEntity> widgets = [];
     String folderAsset = '';
 
-    // Get list of .zip files in the assets folder
     List<String> zipFiles = await _listZipFiles(filesExt);
 
     if (filesExt == 'kwgt') {
@@ -251,10 +280,8 @@ class DataSourceImpl extends DataSource {
           .load('android/app/src/main/assets/$folderAsset/$zipFileName');
       List<int> bytes = data.buffer.asUint8List();
 
-      // Decode the .zip file
       Archive archive = ZipDecoder().decodeBytes(bytes);
 
-      // Get preview image if it exists in the .zip file
       ArchiveFile? thumbFile =
           archive.firstWhere((file) => file.name == thumbName);
 
@@ -330,18 +357,13 @@ class DataSourceImpl extends DataSource {
   /// Lists all .zip files in the assets folder with the specified extension.
   /// Filters by [filesExt] and returns only the filenames without paths.
   Future<List<String>> _listZipFiles(String filesExt) async {
-    // Load the asset manifest
     final AssetManifest assetManifest =
         await AssetManifest.loadFromAssetBundle(rootBundle);
-    // List all assets
     final List<String> assetList = assetManifest.listAssets();
 
-    // Filter .zip files in the assets folder
     List<String> zipFiles =
         assetList.where((asset) => asset.endsWith('.$filesExt')).toList();
-    // Remove path prefix and file extension
     zipFiles = zipFiles.map((zip) => zip.split('/').last).toList();
     return zipFiles;
   }
-
 }
