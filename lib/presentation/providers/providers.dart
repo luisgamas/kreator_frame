@@ -1,4 +1,5 @@
 export 'app_values_preferences_provider.dart';
+export 'fullscreen_preview_provider.dart';
 export 'in_app_update_provider.dart';
 export 'licenses_oss_provider.dart';
 export 'package_info_provider.dart';

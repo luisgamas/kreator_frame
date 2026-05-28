@@ -38,21 +38,33 @@ class _WallpaperPreviewScreenState extends ConsumerState<WallpaperPreviewScreen>
 
   @override
   Widget build(BuildContext context) {
+    final showContent = ref.watch(fullscreenPreviewProvider);
+
     return Scaffold(
       body: Stack(
         children: [
-         _HeroImagePreview(wallpaperEntity: widget.wallpaperEntity),
-          
-          const SizedBox.expand(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0.70, 1.0],
-                  colors: [Colors.transparent, Colors.black87],
+          _HeroImagePreview(wallpaperEntity: widget.wallpaperEntity),
+
+          AnimatedOpacity(
+            opacity: showContent ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            child: const SizedBox.expand(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: [0.70, 1.0],
+                    colors: [Colors.transparent, Colors.black87],
+                  ),
                 ),
               ),
+            ),
+          ),
+
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: ref.read(fullscreenPreviewProvider.notifier).showInFullscreen,
             ),
           ),
 
@@ -77,22 +89,26 @@ class _HeroImagePreview extends StatelessWidget {
 
     return Hero(
       tag: wallpaperEntity.url,
-      child: Image(
-        image: CachedNetworkImageProvider(wallpaperEntity.url),
-        width: size.width,
-        height: size.height,
-        fit: BoxFit.fitHeight,
-        filterQuality: FilterQuality.high,
-        loadingBuilder: (context, child, loadingProgress) {
-          return loadingProgress == null
-          ? child
-          : const Center(
-            child: CircularProgressIndicator(strokeCap: StrokeCap.round),
-          );
-        },
-        errorBuilder: (_, _, _) => const Center(
-          child: Icon(
-            Hicon.dangerTriangleOutline
+      child: InteractiveViewer(
+        clipBehavior: Clip.none,
+        constrained: false,
+        child: Image(
+          image: CachedNetworkImageProvider(wallpaperEntity.url),
+          width: size.width,
+          height: size.height,
+          fit: BoxFit.fitHeight,
+          filterQuality: FilterQuality.high,
+          loadingBuilder: (context, child, loadingProgress) {
+            return loadingProgress == null
+            ? child
+            : const Center(
+              child: CircularProgressIndicator(strokeCap: StrokeCap.round),
+            );
+          },
+          errorBuilder: (_, _, _) => const Center(
+            child: Icon(
+              Hicon.dangerTriangleOutline
+            ),
           ),
         ),
       ),
@@ -112,7 +128,10 @@ class _BottomContentData extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final textStyles = Theme.of(context).textTheme;
     final showPaletteColors = ref.watch(showPaletteColorsProvider);
-    
+    final showContent = ref.watch(fullscreenPreviewProvider);
+
+    if (!showContent) return const SizedBox.shrink();
+
     return Positioned(
       bottom: AppSpacing.lg,
       left: AppSpacing.md,
@@ -150,7 +169,7 @@ class _BottomContentData extends ConsumerWidget {
                     color: Colors.white,
                   ),
                 ),
-            
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
