@@ -38,23 +38,26 @@ class _WallpaperPreviewScreenState extends ConsumerState<WallpaperPreviewScreen>
 
   @override
   Widget build(BuildContext context) {
-    final showContent = ref.watch(fullscreenPreviewProvider);
+    final size = MediaQuery.sizeOf(context);
 
     return Scaffold(
       body: Stack(
         children: [
           _HeroImagePreview(wallpaperEntity: widget.wallpaperEntity),
 
-          AnimatedOpacity(
-            opacity: showContent ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 200),
-            child: const SizedBox.expand(
-              child: DecoratedBox(
+          // Gradient overlay
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: SizedBox(
+              height: size.height * 0.20,
+              child: const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    stops: [0.70, 1.0],
+                    stops: [0.0, 0.9],
                     colors: [Colors.transparent, Colors.black87],
                   ),
                 ),
@@ -62,10 +65,9 @@ class _WallpaperPreviewScreenState extends ConsumerState<WallpaperPreviewScreen>
             ),
           ),
 
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: ref.read(fullscreenPreviewProvider.notifier).showInFullscreen,
-            ),
+          // Fullscreen toggle
+          GestureDetector(
+            onTap: ref.read(fullscreenPreviewProvider.notifier).showInFullscreen,
           ),
 
           _BottomContentData(wallpaperEntity: widget.wallpaperEntity),
@@ -130,8 +132,6 @@ class _BottomContentData extends ConsumerWidget {
     final showPaletteColors = ref.watch(showPaletteColorsProvider);
     final showContent = ref.watch(fullscreenPreviewProvider);
 
-    if (!showContent) return const SizedBox.shrink();
-
     return Positioned(
       bottom: AppSpacing.lg,
       left: AppSpacing.md,
@@ -141,14 +141,15 @@ class _BottomContentData extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
 
-          if (showPaletteColors)
-            FadeInUp(
-              child: PaletteColorsGrid(wallpaperEntity: wallpaperEntity),
-            ),
+          FadeInUp(
+            animate: showContent ? showPaletteColors : false,
+            child: PaletteColorsGrid(wallpaperEntity: wallpaperEntity),
+          ),
 
           const Gap(10),
 
-          FadeIn(
+          FadeInUp(
+            animate: showContent,
             delay: AppDurations.slow,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
