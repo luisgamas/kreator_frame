@@ -26,7 +26,8 @@ class DataSourceImpl extends DataSource {
   /// Tracks the active download so it can be cancelled.
   CancelToken? _activeCancelToken;
 
-  static const _channel = MethodChannel('kreator_frame/wallpaper');
+  static const _wallpaperChannel = MethodChannel('kreator_frame/wallpaper');
+  static const _kustomChannel = MethodChannel('kreator_frame/kustom');
 
   // ============================================================
   // App Information
@@ -101,7 +102,7 @@ class DataSourceImpl extends DataSource {
   @override
   Future<bool> setWallpaper(String url, int location) async {
     try {
-      final result = await _channel.invokeMethod<bool>('setWallpaper', {
+      final result = await _wallpaperChannel.invokeMethod<bool>('setWallpaper', {
         'url': url,
         'location': location,
       });
@@ -117,7 +118,7 @@ class DataSourceImpl extends DataSource {
   @override
   Future<bool> openNativeWallpaperPicker(String url) async {
     try {
-      final result = await _channel.invokeMethod<bool>('openNativeWallpaperPicker', {
+      final result = await _wallpaperChannel.invokeMethod<bool>('openNativeWallpaperPicker', {
         'url': url,
       });
       return result ?? false;
@@ -132,7 +133,7 @@ class DataSourceImpl extends DataSource {
   @override
   Future<bool> openWallpaperChooser(String url) async {
     try {
-      final result = await _channel.invokeMethod<bool>('openWallpaperChooser', {
+      final result = await _wallpaperChannel.invokeMethod<bool>('openWallpaperChooser', {
         'url': url,
       });
       return result ?? false;
@@ -172,6 +173,40 @@ class DataSourceImpl extends DataSource {
   void cancelDownloadWallpaper() {
     _activeCancelToken?.cancel('Download cancelled by user');
     _activeCancelToken = null;
+  }
+
+  // ============================================================
+  // Kustom App Integration
+  // ============================================================
+
+  @override
+  Future<bool> isKustomAppInstalled(String packageName) async {
+    try {
+      final result = await _kustomChannel.invokeMethod<bool>('isKustomAppInstalled', {
+        'packageName': packageName,
+      });
+      return result ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> sendWidgetToKustomApp({
+    required String packageName,
+    required String editorActivity,
+    required String assetPath,
+  }) async {
+    try {
+      final result = await _kustomChannel.invokeMethod<bool>('sendWidgetToKustomApp', {
+        'packageName': packageName,
+        'editorActivity': editorActivity,
+        'assetPath': assetPath,
+      });
+      return result ?? false;
+    } catch (e) {
+      return false;
+    }
   }
 
   /// Download a wallpaper from a URL and save it to the device gallery.
@@ -289,6 +324,7 @@ class DataSourceImpl extends DataSource {
         nameWidget: zipFileName.replaceAll('.$filesExt', ''),
         nameDeveloper: Environment.userDeveloperName,
         widgetThumbnail: thumbFile.content,
+        assetPath: '$folderAsset/$zipFileName',
       ));
     }
 

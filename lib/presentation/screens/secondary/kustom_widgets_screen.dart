@@ -19,8 +19,15 @@ class KustomWidgetConfig {
   /// The file extension identifying the widget type (e.g., 'kwgt', 'klwp').
   final String widgetExtension;
 
-  /// External URL/link to launch when tapping a widget card.
+  /// External URL/link to launch when tapping a widget card
+  /// if the target Kustom app is not installed.
   final String externalLink;
+
+  /// Target Kustom app package name for deep linking.
+  final String targetPackage;
+
+  /// Target editor activity to launch within the Kustom app.
+  final String editorActivity;
 
   /// Total height of each grid cell (image area + text section + Card margins).
   /// Controls the [SliverGridDelegateWithFixedCrossAxisCount.mainAxisExtent]
@@ -39,6 +46,8 @@ class KustomWidgetConfig {
   const KustomWidgetConfig({
     required this.widgetExtension,
     required this.externalLink,
+    required this.targetPackage,
+    required this.editorActivity,
     required this.cellHeight,
     required this.previewFit,
     required this.addPadding,
@@ -54,6 +63,8 @@ class KustomWidgetConfig {
   static const kwgt = KustomWidgetConfig(
     widgetExtension: 'kwgt',
     externalLink: Environment.externalLinkKWGT,
+    targetPackage: Environment.pkgKWGT,
+    editorActivity: Environment.activityKWGT,
     cellHeight: 262,
     previewFit: BoxFit.scaleDown,
     addPadding: true,
@@ -68,6 +79,8 @@ class KustomWidgetConfig {
   static const klwp = KustomWidgetConfig(
     widgetExtension: 'klwp',
     externalLink: Environment.externalLinkKLWP,
+    targetPackage: Environment.pkgKLWP,
+    editorActivity: Environment.activityKLWP,
     cellHeight: 352,
     previewFit: BoxFit.cover,
     addPadding: false,
@@ -125,7 +138,18 @@ class KustomWidgetsScreen extends ConsumerWidget {
                   bottomText: widget.nameDeveloper,
                   fitPreview: config.previewFit,
                   addPadding: config.addPadding,
-                  onTap: () => repository.launchExternalApp(config.externalLink),
+                  onTap: () async {
+                    final installed = await repository.isKustomAppInstalled(config.targetPackage);
+                    if (installed) {
+                      await repository.sendWidgetToKustomApp(
+                        packageName: config.targetPackage,
+                        editorActivity: config.editorActivity,
+                        assetPath: widget.assetPath,
+                      );
+                    } else {
+                      await repository.launchExternalApp(config.externalLink);
+                    }
+                  },
                 ),
               ),
             );

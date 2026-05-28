@@ -84,4 +84,22 @@ class RepositoryImpl extends Repository {
   void cancelDownloadWallpaper() {
     dataSource.cancelDownloadWallpaper();
   }
+
+  @override
+  Future<bool> isKustomAppInstalled(String packageName) {
+    return dataSource.isKustomAppInstalled(packageName);
+  }
+
+  @override
+  Future<bool> sendWidgetToKustomApp({
+    required String packageName,
+    required String editorActivity,
+    required String assetPath,
+  }) {
+    return dataSource.sendWidgetToKustomApp(
+      packageName: packageName,
+      editorActivity: editorActivity,
+      assetPath: assetPath,
+    );
+  }
 }

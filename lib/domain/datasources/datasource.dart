@@ -66,4 +66,15 @@ abstract class DataSource {
   /// Cancels the currently active wallpaper download if one is in progress.
   /// Safe to call when no download is active.
   void cancelDownloadWallpaper();
+
+  /// Checks if a Kustom app (KWGT, KLWP, etc.) is installed on the device.
+  Future<bool> isKustomAppInstalled(String packageName);
+
+  /// Sends a widget/preset to the corresponding Kustom app via an Android Intent.
+  /// Uses the kfile:// URI scheme to trigger direct import into the Kustom editor.
+  Future<bool> sendWidgetToKustomApp({
+    required String packageName,
+    required String editorActivity,
+    required String assetPath,
+  });
 }

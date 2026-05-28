@@ -7,11 +7,13 @@ class WidgetEntity {
   final String nameWidget;
   final String nameDeveloper;
   final Uint8List widgetThumbnail;
+  final String assetPath;
 
   WidgetEntity({
     required this.nameWidget,
     required this.nameDeveloper,
     required this.widgetThumbnail,
+    required this.assetPath,
   });
 
   /// Creates a copy of this widget entity with modified fields.
@@ -19,11 +21,13 @@ class WidgetEntity {
     String? nameWidget,
     String? nameDeveloper,
     Uint8List? widgetThumbnail,
+    String? assetPath,
   }) {
     return WidgetEntity(
       nameWidget: nameWidget ?? this.nameWidget,
       nameDeveloper: nameDeveloper ?? this.nameDeveloper,
       widgetThumbnail: widgetThumbnail ?? this.widgetThumbnail,
+      assetPath: assetPath ?? this.assetPath,
     );
   }
 

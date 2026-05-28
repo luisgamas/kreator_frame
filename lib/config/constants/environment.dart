@@ -45,4 +45,10 @@ class Environment {
   static const String externalLinkBuyMeACoffe = 'https://buymeacoffee.com/luisgamas';
   static const String externalLinkKLWP = 'https://play.google.com/store/apps/details?id=org.kustom.wallpaper';
   static const String externalLinkKWGT = 'https://play.google.com/store/apps/details?id=org.kustom.widget';
+
+  // * Kustom app deep link targets **DO NOT REMOVE**
+  static const String pkgKWGT = 'org.kustom.widget';
+  static const String pkgKLWP = 'org.kustom.wallpaper';
+  static const String activityKWGT = 'org.kustom.widget.picker.WidgetPicker';
+  static const String activityKLWP = 'org.kustom.lib.editor.WpAdvancedEditorActivity';
 }
