@@ -2,6 +2,7 @@ export 'app_values_preferences_provider.dart';
 export 'in_app_update_provider.dart';
 export 'licenses_oss_provider.dart';
 export 'package_info_provider.dart';
+export 'palette_generator_provider.dart';
 export 'permissions_provider.dart';
 export 'progress_downloader_provider.dart';
 export 'repository_provider.dart';

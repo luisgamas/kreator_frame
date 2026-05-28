@@ -15,7 +15,7 @@ import 'package:kreator_frame/presentation/providers/providers.dart';
 import 'package:kreator_frame/presentation/widgets/widgets.dart';
 import 'package:kreator_frame/shared/utils/utils.dart';
 
-class WallpaperPreviewScreen extends ConsumerWidget {
+class WallpaperPreviewScreen extends ConsumerStatefulWidget {
   final WallpaperEntity wallpaperEntity;
 
   const WallpaperPreviewScreen({
@@ -24,11 +24,24 @@ class WallpaperPreviewScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WallpaperPreviewScreen> createState() => _WallpaperPreviewScreenState();
+}
+
+class _WallpaperPreviewScreenState extends ConsumerState<WallpaperPreviewScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(showPaletteColorsProvider.notifier).reset();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-         _HeroImagePreview(wallpaperEntity: wallpaperEntity),
+         _HeroImagePreview(wallpaperEntity: widget.wallpaperEntity),
           
           const SizedBox.expand(
             child: DecoratedBox(
@@ -43,7 +56,7 @@ class WallpaperPreviewScreen extends ConsumerWidget {
             ),
           ),
 
-          _BottomContentData(wallpaperEntity: wallpaperEntity),
+          _BottomContentData(wallpaperEntity: widget.wallpaperEntity),
         ],
       ),
     );
@@ -88,7 +101,7 @@ class _HeroImagePreview extends StatelessWidget {
 }
 
 // ##
-class _BottomContentData extends StatelessWidget {
+class _BottomContentData extends ConsumerWidget {
   final WallpaperEntity wallpaperEntity;
 
   const _BottomContentData({
@@ -96,51 +109,64 @@ class _BottomContentData extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final textStyles = Theme.of(context).textTheme;
+    final showPaletteColors = ref.watch(showPaletteColorsProvider);
     
     return Positioned(
       bottom: AppSpacing.lg,
       left: AppSpacing.md,
       right: AppSpacing.md,
-      child: FadeIn(
-        delay: AppDurations.slow,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            
-            Text(
-              wallpaperEntity.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: textStyles.titleLarge?.copyWith(
-                color: Colors.white
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+
+          if (showPaletteColors)
+            FadeInUp(
+              child: PaletteColorsGrid(wallpaperEntity: wallpaperEntity),
             ),
-            Text(
-              wallpaperEntity.author,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: textStyles.labelLarge?.copyWith(
-                color: Colors.white,
-              ),
-            ),
-        
-            Row(
-              mainAxisAlignment: MainAxisAlignment.start,
+
+          const Gap(10),
+
+          FadeIn(
+            delay: AppDurations.slow,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _NoFunctionButton(icon: Hicon.heart2Outline),
-                const Gap(AppSpacing.xxxs),
-                const _NoFunctionButton(icon: Hicon.paletteOutline),
-                const Gap(AppSpacing.xxxs),
-                WallpaperDownloadButton(wallpaperEntity: wallpaperEntity),
-                const Spacer(),
-                _ApplyWallpaperButton(wallpaperEntity: wallpaperEntity),
+                Text(
+                  wallpaperEntity.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: textStyles.titleLarge?.copyWith(
+                    color: Colors.white
+                  ),
+                ),
+                Text(
+                  wallpaperEntity.author,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textStyles.labelLarge?.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
+            
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    const _NoFunctionButton(icon: Hicon.heart2Outline),
+                    const Gap(AppSpacing.xxxs),
+                    const PaletteColorsButton(),
+                    const Gap(AppSpacing.xxxs),
+                    WallpaperDownloadButton(wallpaperEntity: wallpaperEntity),
+                    const Spacer(),
+                    _ApplyWallpaperButton(wallpaperEntity: wallpaperEntity),
+                  ],
+                ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
