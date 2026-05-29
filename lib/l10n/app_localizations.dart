@@ -343,6 +343,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select a colour for the theme'**
   String get themeColorSelector;
+
+  /// No description provided for @themeDynamicColorUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Dynamic colours are not available on this device. Using default colour instead.'**
+  String get themeDynamicColorUnavailable;
 }
 
 class _AppLocalizationsDelegate

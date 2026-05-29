@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kreator_frame/config/config.dart';
 import 'package:kreator_frame/l10n/app_localizations.dart';
 import 'package:kreator_frame/presentation/providers/providers.dart';
+import 'package:kreator_frame/shared/utils/utils.dart';
 
 /// Entry point of the Kreator Frame application.
 ///
@@ -40,25 +41,37 @@ class MyApp extends ConsumerWidget {
 
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-        final ThemeData lightTheme;
-        final ThemeData darkTheme;
+        final isDynamic = appValuesFromPreference.isDynamicColor;
 
-        if (appValuesFromPreference.isDynamicColor && lightDynamic != null) {
-          lightTheme = AppTheme.buildFromColorScheme(lightDynamic);
-          darkTheme = AppTheme.buildFromColorScheme(darkDynamic!);
-        } else {
-          final appTheme = AppTheme(primaryColor: appValuesFromPreference.colorAccentForTheme);
-          lightTheme = appTheme.lightTheme;
-          darkTheme = appTheme.darkTheme;
+        // Validate dynamic color schemes — fall back to seed on Samsung/Xiaomi bugs
+        final validatedLight = isDynamic ? DynamicColorValidator.validate(lightDynamic) : null;
+        final validatedDark = isDynamic ? DynamicColorValidator.validate(darkDynamic) : null;
+
+        // Track whether dynamic colors actually loaded for the UI
+        final dynamicAvailable = validatedLight != null || validatedDark != null;
+        if (isDynamic && !dynamicAvailable) {
+          debugPrint('[DynamicColor] Device returned null or degenerate scheme — using fallback seed color');
         }
+        // Update notifier so the UI can react to dynamic color availability
+        ref.read(appValuesPreferencesProvider.notifier).updateDynamicColorAvailability(dynamicAvailable);
+
+        final lightTheme = AppTheme(
+          primaryColor: appValuesFromPreference.colorAccentForTheme,
+          dynamicColorScheme: validatedLight,
+        );
+
+        final darkTheme = AppTheme(
+          primaryColor: appValuesFromPreference.colorAccentForTheme,
+          dynamicColorScheme: validatedDark,
+        );
 
         return MaterialApp.router(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           routerConfig: appRouter,
           themeMode: appValuesFromPreference.themeModeForApp,
-          theme: lightTheme,
-          darkTheme: darkTheme,
+          theme: lightTheme.lightTheme,
+          darkTheme: darkTheme.darkTheme,
         );
       },
     );

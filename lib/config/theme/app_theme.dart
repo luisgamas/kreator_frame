@@ -4,29 +4,33 @@ import 'package:flutter/material.dart';
 // 📦 Package imports:
 import 'package:google_fonts/google_fonts.dart';
 
+// 🌎 Project imports:
+import 'package:kreator_frame/shared/utils/dynamic_color_validator.dart';
+
 class AppTheme {
   final Color primaryColor;
+  final ColorScheme? dynamicColorScheme;
 
-  AppTheme({required this.primaryColor});
+  AppTheme({
+    required this.primaryColor,
+    this.dynamicColorScheme,
+  });
 
   late final ThemeData lightTheme = _buildTheme(Brightness.light);
   late final ThemeData darkTheme = _buildTheme(Brightness.dark);
 
+  /// Whether the dynamic color scheme was actually used.
+  /// Returns false if the scheme was null or degenerate (Samsung/Xiaomi bug).
+  late final bool dynamicColorApplied = DynamicColorValidator.validate(dynamicColorScheme) != null;
+
   ThemeData _buildTheme(Brightness brightness) {
-    final colorScheme = ColorScheme.fromSeed(
+    // Validate dynamic color scheme — null or degenerate schemes fall back to seed
+    final validatedDynamic = DynamicColorValidator.validate(dynamicColorScheme);
+    final colorScheme = validatedDynamic ?? ColorScheme.fromSeed(
       seedColor: primaryColor,
       brightness: brightness,
     );
 
-    return ThemeData(
-      useMaterial3: true,
-      brightness: colorScheme.brightness,
-      colorScheme: colorScheme,
-      textTheme: _buildTextTheme(colorScheme),
-    );
-  }
-
-  static ThemeData buildFromColorScheme(ColorScheme colorScheme) {
     return ThemeData(
       useMaterial3: true,
       brightness: colorScheme.brightness,

@@ -16,17 +16,20 @@ import 'package:kreator_frame/shared/utils/utils.dart';
 /// - Theme mode (light, dark, system)
 /// - Accent color for the theme
 /// - Dynamic color (Material You) toggle
+/// - Whether dynamic colors are actually available on this device
 /// - Grid view preferences (currently unused)
 class AppValuesPreferencesState {
   final Color colorAccentForTheme;
   final ThemeMode themeModeForApp;
   final bool isDynamicColor;
+  final bool dynamicColorAvailable;
   final bool minimalViewForGrids;
 
   AppValuesPreferencesState({
     Color? colorAccentForTheme,
     ThemeMode? themeModeForApp,
     this.isDynamicColor = false,
+    this.dynamicColorAvailable = false,
     this.minimalViewForGrids = false,
   })  : colorAccentForTheme = colorAccentForTheme ?? AppConstants.accentColors[4],
         themeModeForApp = themeModeForApp ?? AppConstants.themeModeOptions[0].themeMode;
@@ -35,11 +38,13 @@ class AppValuesPreferencesState {
     Color? colorAccentForTheme,
     ThemeMode? themeModeForApp,
     bool? isDynamicColor,
+    bool? dynamicColorAvailable,
     bool? minimalViewForGrids,
   }) => AppValuesPreferencesState(
     colorAccentForTheme: colorAccentForTheme ?? this.colorAccentForTheme,
     themeModeForApp: themeModeForApp ?? this.themeModeForApp,
     isDynamicColor: isDynamicColor ?? this.isDynamicColor,
+    dynamicColorAvailable: dynamicColorAvailable ?? this.dynamicColorAvailable,
     minimalViewForGrids: minimalViewForGrids ?? this.minimalViewForGrids,
   );
 
@@ -112,6 +117,14 @@ class AppValuesPreferencesNotifier extends Notifier<AppValuesPreferencesState> {
   void setPreferenceForDynamicColor() async {
     await _keyValueStorageServices.setKeyValue(Environment.keyColorTheme, -1);
     state = state.copyWith(isDynamicColor: true);
+  }
+
+  /// Updates whether dynamic colors actually loaded on this device.
+  /// Called from main.dart after DynamicColorBuilder provides the schemes.
+  void updateDynamicColorAvailability(bool available) {
+    if (state.dynamicColorAvailable != available) {
+      state = state.copyWith(dynamicColorAvailable: available);
+    }
   }
 
   /* void toggleMinimalViewForGrids() async {

@@ -2,11 +2,13 @@
 import 'package:flutter/material.dart';
 
 // 📦 Package imports:
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 
 // 🌎 Project imports:
 import 'package:kreator_frame/config/config.dart';
 import 'package:kreator_frame/l10n/app_localizations.dart';
+import 'package:kreator_frame/presentation/providers/providers.dart';
 import 'package:kreator_frame/presentation/widgets/widgets.dart';
 
 class ThemeSelectorScreen extends StatelessWidget {
@@ -75,7 +77,60 @@ class ThemeSelectorScreen extends StatelessWidget {
               ),
             ),
           ),
+
+          // Warning when dynamic colors are not available on this device
+          const _DynamicColorWarning(),
+
+          const SliverGap(AppSpacing.lg),
         ],
+      ),
+    );
+  }
+}
+
+/// Shows a warning when dynamic colors are selected but not available on this device.
+class _DynamicColorWarning extends ConsumerWidget {
+  const _DynamicColorWarning();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appValuesFromPreference = ref.watch(appValuesPreferencesProvider);
+    final colors = Theme.of(context).colorScheme;
+    final textStyles = Theme.of(context).textTheme;
+
+    // Only show when dynamic color is selected but not actually available
+    if (!appValuesFromPreference.isDynamicColor || appValuesFromPreference.dynamicColorAvailable) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: colors.errorContainer,
+            borderRadius: AppRadius.radiusLg,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Hicon.dangerCircleOutline,
+                color: colors.onErrorContainer,
+                size: 20,
+              ),
+              const Gap(AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  AppLocalizations.of(context)!.themeDynamicColorUnavailable,
+                  style: textStyles.bodySmall?.copyWith(
+                    color: colors.onErrorContainer,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

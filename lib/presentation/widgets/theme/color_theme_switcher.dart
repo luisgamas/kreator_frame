@@ -28,6 +28,7 @@ class ColorThemeSwitcher extends ConsumerWidget {
           // First item: Dynamic color (Material You)
           if (index == 0) {
             final isSelected = appValuesFromPreference.isDynamicColor;
+            final dynamicFailed = isSelected && !appValuesFromPreference.dynamicColorAvailable;
 
             return GestureDetector(
               onTap: isSelected
@@ -42,25 +43,48 @@ class ColorThemeSwitcher extends ConsumerWidget {
                   ),
                   borderRadius: AppRadius.radiusLg,
                 ),
-                child: AnimatedOpacity(
-                  opacity: isSelected ? 1 : 0,
-                  duration: AppDurations.normal,
-                  child: Center(
-                    child: ClipRRect(
-                      borderRadius: AppRadius.radiusSm,
-                      child: Container(
-                        padding: const EdgeInsets.all(AppSpacing.xs),
-                        decoration: BoxDecoration(
-                          borderRadius: AppRadius.radiusXs,
-                          color: colors.onPrimary.withValues(alpha: 0.7),
-                        ),
-                        child: const Icon(
-                          Hicon.tickBold,
-                          size: AppIconSizes.xxs,
+                child: Stack(
+                  children: [
+                    // Selection indicator
+                    AnimatedOpacity(
+                      opacity: isSelected ? 1 : 0,
+                      duration: AppDurations.normal,
+                      child: Center(
+                        child: ClipRRect(
+                          borderRadius: AppRadius.radiusSm,
+                          child: Container(
+                            padding: const EdgeInsets.all(AppSpacing.xs),
+                            decoration: BoxDecoration(
+                              borderRadius: AppRadius.radiusXs,
+                              color: colors.onPrimary.withValues(alpha: 0.7),
+                            ),
+                            child: const Icon(
+                              Hicon.tickBold,
+                              size: AppIconSizes.xxs,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                    // Warning indicator when dynamic colors failed to load
+                    if (dynamicFailed)
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: colors.errorContainer,
+                            borderRadius: AppRadius.radiusSm,
+                          ),
+                          child: Icon(
+                            Hicon.dangerTriangleOutline,
+                            size: 12,
+                            color: colors.onErrorContainer,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             );
