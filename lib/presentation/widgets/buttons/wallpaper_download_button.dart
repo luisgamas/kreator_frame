@@ -40,7 +40,7 @@ class WallpaperDownloadButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final permissions = ref.watch(permissionsProvider);
+    final permissionsAsync = ref.watch(permissionsProvider);
     final progressValue = ref.watch(progressDownloaderProvider);
     final colors = Theme.of(context).colorScheme;
 
@@ -49,8 +49,11 @@ class WallpaperDownloadButton extends ConsumerWidget {
       return _buildDownloadingState(context, ref, progressValue, colors);
     }
 
+    final permissions = permissionsAsync.value;
+    final storageGranted = permissions?.storageGranted ?? false;
+
     return CustomIconButton(
-      onPressed: () => permissions.storageGranted
+      onPressed: () => storageGranted
           ? _downloadWallpaper(context, ref, colors)
           : ref.read(permissionsProvider.notifier).requestStoragePermission(),
       icon: Hicon.downloadOutline,

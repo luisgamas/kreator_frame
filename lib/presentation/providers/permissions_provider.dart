@@ -34,21 +34,15 @@ class PermissionsState {
 // * Notifier State
 /// Notifier that manages permission requests and status checks.
 ///
-/// Automatically initializes permission states on creation and provides
-/// methods to request permissions when needed. Adapts behavior based on
-/// Android version to support both legacy storage and Scoped Storage.
-class PermissionsNotifier extends Notifier<PermissionsState> {
+/// Loads permission states on creation and provides methods to request
+/// permissions when needed. Adapts behavior based on Android version.
+class PermissionsNotifier extends AsyncNotifier<PermissionsState> {
   int _androidSdkVersion = 25;
 
   @override
-  PermissionsState build() {
-    _init();
-    return PermissionsState();
-  }
-
-  Future<void> _init() async {
+  Future<PermissionsState> build() async {
     await _getAndroidVersion();
-    await _checkPermissions();
+    return _checkPermissions();
   }
 
   Future<void> _getAndroidVersion() async {
@@ -57,19 +51,12 @@ class PermissionsNotifier extends Notifier<PermissionsState> {
     _androidSdkVersion = androidInfo.version.sdkInt;
   }
 
-  // List of permissions to request, ordered manually
-
   /// Checks necessary permissions based on Android version.
   /// - Android 10+ (API 29+): No permissions needed to write to MediaStore
   /// - Android 9 and earlier (API ≤28): Requires WRITE_EXTERNAL_STORAGE
-  Future<void> _checkPermissions() async {
-    final permissionsArray = await Future.wait([
-      _determineStoragePermission(),
-    ]);
-
-    state = state.copyWith(
-      storage: permissionsArray[0],
-    );
+  Future<PermissionsState> _checkPermissions() async {
+    final storageStatus = await _determineStoragePermission();
+    return PermissionsState(storage: storageStatus);
   }
 
   /// Determines storage permission status based on Android version.
@@ -87,15 +74,19 @@ class PermissionsNotifier extends Notifier<PermissionsState> {
   /// Requests storage permission only if necessary (Android ≤28).
   /// For Android 10+, does nothing because no permissions are needed.
   Future<void> requestStoragePermission() async {
+    final currentState = state.value;
+    if (currentState == null) return;
+
     // Do not request storage permission on Android 10+
     if (_androidSdkVersion >= 29) {
-      state = state.copyWith(storage: PermissionStatus.granted);
+      state = AsyncData(currentState.copyWith(storage: PermissionStatus.granted));
       return;
     }
 
     // Android 9 and earlier: request WRITE_EXTERNAL_STORAGE
     final storageStatus = await Permission.storage.request();
-    state = state.copyWith(storage: storageStatus);
+    if (!ref.mounted) return;
+    state = AsyncData(currentState.copyWith(storage: storageStatus));
 
     if (storageStatus == PermissionStatus.permanentlyDenied) {
       openAppSettings();
@@ -105,6 +96,6 @@ class PermissionsNotifier extends Notifier<PermissionsState> {
 
 // * Provider
 /// Provider that exposes permission states and management functionality.
-final permissionsProvider = NotifierProvider<PermissionsNotifier, PermissionsState>(
+final permissionsProvider = AsyncNotifierProvider<PermissionsNotifier, PermissionsState>(
   PermissionsNotifier.new,
 );
