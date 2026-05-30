@@ -12,17 +12,30 @@ import 'package:kreator_frame/presentation/widgets/widgets.dart';
 ///
 /// This widget uses providers for state management:
 /// - `tabsBarAppProvider`: Provides the list of tabs to display
-/// - `inAppUpdateProvider`: Automatically checks for updates on mount and
+/// - `inAppUpdateProvider`: Checks for updates on mount and
 ///   executes immediate updates when available
 ///
 /// All state is managed through Riverpod providers, eliminating the need
 /// for local stateful widget management.
-class HomeScreen extends ConsumerWidget {
-
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Trigger update check explicitly on first mount
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(inAppUpdateProvider.notifier).checkAppForUpdates();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final tabsBar = ref.watch(tabsBarAppProvider);
 
     // Auto-execute immediate update when available
@@ -41,7 +54,7 @@ class HomeScreen extends ConsumerWidget {
               headerSliverBuilder: (context, innerBoxIsScrolled) {
                 return [
                   // App Bar
-                  const CustomSliverAppBar(),        
+                  const CustomSliverAppBar(),
                 ];
               },
               body: TabBarView(
@@ -49,12 +62,12 @@ class HomeScreen extends ConsumerWidget {
               ),
             );
           }),
-        ), 
+        ),
         error: (_, _) => ErrorView(
           onRetry: () => ref.invalidate(tabsBarAppProvider),
-        ), 
+        ),
         loading: () => const Center(
-          child: CircularProgressIndicator(strokeCap: StrokeCap.round)
+          child: CircularProgressIndicator(strokeCap: StrokeCap.round),
         ),
       ),
     );
