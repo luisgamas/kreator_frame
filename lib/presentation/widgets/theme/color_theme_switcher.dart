@@ -22,7 +22,7 @@ class ColorThemeSwitcher extends ConsumerWidget {
       return SliverGrid(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4),
         delegate: SliverChildBuilderDelegate(
-          (_, __) => const SizedBox.shrink(),
+          (_, _) => const SizedBox.shrink(),
           childCount: 0,
         ),
       );

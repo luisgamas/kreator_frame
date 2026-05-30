@@ -9,7 +9,7 @@ import 'package:kreator_frame/presentation/providers/providers.dart';
 // Mock for Preferences to avoid native plugin issues
 class MockPreferencesNotifier extends AppValuesPreferencesNotifier {
   @override
-  AppValuesPreferencesState build() {
+  Future<AppValuesPreferencesState> build() async {
     return AppValuesPreferencesState(
       isDynamicColor: false,
     );
@@ -20,31 +20,31 @@ class MockPreferencesNotifier extends AppValuesPreferencesNotifier {
 class MockTabsBarNotifier extends TabsBarAppNotifier {
   @override
   Future<List<TabBarEntity>> build() async {
-    return []; 
+    return [];
   }
 }
 
 void main() {
   group('Riverpod State Tests', () {
-    test('App Values Preferences Provider should initialize with default state', () {
+    test('App Values Preferences Provider should initialize with default state', () async {
       final container = ProviderContainer(
         overrides: [
           appValuesPreferencesProvider.overrideWith(() => MockPreferencesNotifier()),
         ],
       );
-      
-      final state = container.read(appValuesPreferencesProvider);
+
+      final state = await container.read(appValuesPreferencesProvider.future);
       expect(state.isDynamicColor, false);
     });
 
-    test('TabsBarAppProvider should initialize correctly', () {
+    test('TabsBarAppProvider should initialize correctly', () async {
       final container = ProviderContainer(
         overrides: [
           tabsBarAppProvider.overrideWith(() => MockTabsBarNotifier()),
         ],
       );
-      
-      final state = container.read(tabsBarAppProvider);
+
+      final state = await container.read(tabsBarAppProvider.future);
       expect(state, isNotNull);
     });
   });

@@ -47,7 +47,7 @@ class MyApp extends ConsumerWidget {
           ),
         ),
       ),
-      error: (_, _) => MaterialApp(
+      error: (_, _) => const MaterialApp(
         home: Scaffold(
           body: Center(
             child: Text('Failed to load preferences'),
