@@ -99,7 +99,7 @@ Once a vulnerability is patched and released, we will:
 For security-related questions (not vulnerability reports):
 - Review this document
 - Check [CONTRIBUTING.md](CONTRIBUTING.md)
-- Open a [Discussion](https://github.com/LuisGamas/kreator_frame/discussions) (for non-sensitive topics)
+- Open a [Discussion](https://github.com/luisgamas/kreator_frame/discussions) (for non-sensitive topics)
 
 ---
 

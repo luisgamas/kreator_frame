@@ -5,17 +5,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/LuisGamas/kreator_frame/releases">
-    <img src="https://img.shields.io/github/v/release/LuisGamas/kreator_frame?style=for-the-badge&color=02569B" alt="Release" />
+  <a href="https://github.com/luisgamas/kreator_frame/releases">
+    <img src="https://img.shields.io/github/v/release/luisgamas/kreator_frame?style=for-the-badge&color=02569B" alt="Release" />
   </a>
-  <a href="https://github.com/LuisGamas/kreator_frame/blob/master/LICENSE">
-    <img src="https://img.shields.io/github/license/LuisGamas/kreator_frame?style=for-the-badge&color=0175C2" alt="License" />
+  <a href="https://github.com/luisgamas/kreator_frame/blob/master/LICENSE">
+    <img src="https://img.shields.io/github/license/luisgamas/kreator_frame?style=for-the-badge&color=0175C2" alt="License" />
   </a>
-  <!-- <a href="https://github.com/LuisGamas/kreator_frame/stargazers">
-    <img src="https://img.shields.io/github/stars/LuisGamas/kreator_frame?style=for-the-badge&color=02569B" alt="Stars" />
+  <!-- <a href="https://github.com/luisgamas/kreator_frame/stargazers">
+    <img src="https://img.shields.io/github/stars/luisgamas/kreator_frame?style=for-the-badge&color=02569B" alt="Stars" />
   </a> -->
-  <!-- <a href="https://github.com/LuisGamas/kreator_frame/releases">
-    <img src="https://img.shields.io/github/downloads/LuisGamas/kreator_frame/total?style=for-the-badge&color=0175C2" alt="Downloads" />
+  <!-- <a href="https://github.com/luisgamas/kreator_frame/releases">
+    <img src="https://img.shields.io/github/downloads/luisgamas/kreator_frame/total?style=for-the-badge&color=0175C2" alt="Downloads" />
   </a> -->
 </p>
 
@@ -64,15 +64,15 @@
 
 ## 📖 Documentation
 
-Every step — from zero to the Play Store — is covered in the **[Wiki](https://github.com/LuisGamas/kreator_frame/wiki)** (also available locally under `docs/`).
+Every step — from zero to the Play Store — is covered in the **[Wiki](https://github.com/luisgamas/kreator_frame/wiki)** (also available locally under `docs/`).
 
 |     |     |
 |---|---|
-| [Installation & Setup](https://github.com/LuisGamas/kreator_frame/wiki/Installation-and-Setup) | Get your environment ready |
-| [Editing the Project](https://github.com/LuisGamas/kreator_frame/wiki/Editing-the-Project) | Configure `.env` and your wallpaper data |
-| [Adding Widgets & Wallpapers](https://github.com/LuisGamas/kreator_frame/wiki/Adding-widgets) | Import your Kustom files |
-| [Customization](https://github.com/LuisGamas/kreator_frame/wiki/Home#2-customization) | Rename, rebrand, change icons & splash |
-| [Build & Release](https://github.com/LuisGamas/kreator_frame/wiki/Build-and-release-an-Android-app) | Sign your APK/AAB and ship it |
+| [Installation & Setup](https://github.com/luisgamas/kreator_frame/wiki/Installation-and-Setup) | Get your environment ready |
+| [Editing the Project](https://github.com/luisgamas/kreator_frame/wiki/Editing-the-Project) | Configure `.env` and your wallpaper data |
+| [Adding Widgets & Wallpapers](https://github.com/luisgamas/kreator_frame/wiki/Adding-widgets) | Import your Kustom files |
+| [Customization](https://github.com/luisgamas/kreator_frame/wiki/Home#2-customization) | Rename, rebrand, change icons & splash |
+| [Build & Release](https://github.com/luisgamas/kreator_frame/wiki/Build-and-release-an-Android-app) | Sign your APK/AAB and ship it |
 
 ---
 
@@ -102,13 +102,13 @@ Kreator Frame is built with love for the Kustom community. If it helps you, cons
 
 <p align="center">
   <a href="https://sink.gamas.workers.dev/buymeacoffee">
-    <img src="https://raw.githubusercontent.com/LuisGamas/buttons-design/main/buy_me_a_coffe/buy_me_a_coffe_fill.png" width="200" alt="Buy Me a Coffee" />
+    <img src="https://raw.githubusercontent.com/luisgamas/buttons-design/main/buy_me_a_coffe/buy_me_a_coffe_fill.png" width="200" alt="Buy Me a Coffee" />
   </a>
   <a href="https://sink.gamas.workers.dev/paypal-donations">
-    <img src="https://raw.githubusercontent.com/LuisGamas/buttons-design/main/paypal/paypal_fill.png" width="200" alt="Donate via PayPal" />
+    <img src="https://raw.githubusercontent.com/luisgamas/buttons-design/main/paypal/paypal_fill.png" width="200" alt="Donate via PayPal" />
   </a>
   <a href="https://sink.gamas.workers.dev/github-sponsor">
-    <img src="https://raw.githubusercontent.com/LuisGamas/buttons-design/main/github_sponsor/github_sponsor_fill.png" width="200" alt="Sponsor on GitHub" />
+    <img src="https://raw.githubusercontent.com/luisgamas/buttons-design/main/github_sponsor/github_sponsor_fill.png" width="200" alt="Sponsor on GitHub" />
   </a>
 </p>
 
