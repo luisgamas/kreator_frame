@@ -37,41 +37,59 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appRouter = ref.watch(appRouterProvider);
-    final appValuesFromPreference = ref.watch(appValuesPreferencesProvider);
+    final appValuesAsync = ref.watch(appValuesPreferencesProvider);
 
-    return DynamicColorBuilder(
-      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-        final isDynamic = appValuesFromPreference.isDynamicColor;
+    return appValuesAsync.when(
+      loading: () => const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(strokeCap: StrokeCap.round),
+          ),
+        ),
+      ),
+      error: (_, _) => MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text('Failed to load preferences'),
+          ),
+        ),
+      ),
+      data: (appValuesFromPreference) {
+        return DynamicColorBuilder(
+          builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+            final isDynamic = appValuesFromPreference.isDynamicColor;
 
-        // Validate dynamic color schemes — fall back to seed on Samsung/Xiaomi bugs
-        final validatedLight = isDynamic ? DynamicColorValidator.validate(lightDynamic) : null;
-        final validatedDark = isDynamic ? DynamicColorValidator.validate(darkDynamic) : null;
+            // Validate dynamic color schemes — fall back to seed on Samsung/Xiaomi bugs
+            final validatedLight = isDynamic ? DynamicColorValidator.validate(lightDynamic) : null;
+            final validatedDark = isDynamic ? DynamicColorValidator.validate(darkDynamic) : null;
 
-        // Track whether dynamic colors actually loaded for the UI
-        final dynamicAvailable = validatedLight != null || validatedDark != null;
-        if (isDynamic && !dynamicAvailable) {
-          debugPrint('[DynamicColor] Device returned null or degenerate scheme — using fallback seed color');
-        }
-        // Update notifier so the UI can react to dynamic color availability
-        ref.read(appValuesPreferencesProvider.notifier).updateDynamicColorAvailability(dynamicAvailable);
+            // Track whether dynamic colors actually loaded for the UI
+            final dynamicAvailable = validatedLight != null || validatedDark != null;
+            if (isDynamic && !dynamicAvailable) {
+              debugPrint('[DynamicColor] Device returned null or degenerate scheme — using fallback seed color');
+            }
+            // Update notifier so the UI can react to dynamic color availability
+            ref.read(appValuesPreferencesProvider.notifier).updateDynamicColorAvailability(dynamicAvailable);
 
-        final lightTheme = AppTheme(
-          primaryColor: appValuesFromPreference.colorAccentForTheme,
-          dynamicColorScheme: validatedLight,
-        );
+            final lightTheme = AppTheme(
+              primaryColor: appValuesFromPreference.colorAccentForTheme,
+              dynamicColorScheme: validatedLight,
+            );
 
-        final darkTheme = AppTheme(
-          primaryColor: appValuesFromPreference.colorAccentForTheme,
-          dynamicColorScheme: validatedDark,
-        );
+            final darkTheme = AppTheme(
+              primaryColor: appValuesFromPreference.colorAccentForTheme,
+              dynamicColorScheme: validatedDark,
+            );
 
-        return MaterialApp.router(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          routerConfig: appRouter,
-          themeMode: appValuesFromPreference.themeModeForApp,
-          theme: lightTheme.lightTheme,
-          darkTheme: darkTheme.darkTheme,
+            return MaterialApp.router(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              routerConfig: appRouter,
+              themeMode: appValuesFromPreference.themeModeForApp,
+              theme: lightTheme.lightTheme,
+              darkTheme: darkTheme.darkTheme,
+            );
+          },
         );
       },
     );

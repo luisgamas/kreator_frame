@@ -15,9 +15,11 @@ class ThemeModeSwitcher extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final appValuesFromPreference = ref.watch(appValuesPreferencesProvider);
+    final appValuesAsync = ref.watch(appValuesPreferencesProvider);
     final colors = Theme.of(context).colorScheme;
     final textStyles = Theme.of(context).textTheme;
+
+    final appValuesFromPreference = appValuesAsync.value;
 
     return SliverGrid(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -28,8 +30,8 @@ class ThemeModeSwitcher extends ConsumerWidget {
       delegate: SliverChildBuilderDelegate(
         (BuildContext context, int index) {
           
-          final isSelectedThemeMode = AppConstants.themeModeOptions[index].themeMode 
-                == appValuesFromPreference.themeModeForApp;
+          final isSelectedThemeMode = appValuesFromPreference != null &&
+              AppConstants.themeModeOptions[index].themeMode == appValuesFromPreference.themeModeForApp;
                 
           return GestureDetector(
             onTap: isSelectedThemeMode

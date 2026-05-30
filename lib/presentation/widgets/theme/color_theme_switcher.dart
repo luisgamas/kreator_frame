@@ -14,8 +14,19 @@ class ColorThemeSwitcher extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final appValuesFromPreference = ref.watch(appValuesPreferencesProvider);
+    final appValuesAsync = ref.watch(appValuesPreferencesProvider);
     final colors = Theme.of(context).colorScheme;
+
+    final appValuesFromPreference = appValuesAsync.value;
+    if (appValuesFromPreference == null) {
+      return SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4),
+        delegate: SliverChildBuilderDelegate(
+          (_, __) => const SizedBox.shrink(),
+          childCount: 0,
+        ),
+      );
+    }
 
     return SliverGrid(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

@@ -94,9 +94,14 @@ class _DynamicColorWarning extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final appValuesFromPreference = ref.watch(appValuesPreferencesProvider);
+    final appValuesAsync = ref.watch(appValuesPreferencesProvider);
     final colors = Theme.of(context).colorScheme;
     final textStyles = Theme.of(context).textTheme;
+
+    final appValuesFromPreference = appValuesAsync.value;
+    if (appValuesFromPreference == null) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
 
     // Only show when dynamic color is selected but not actually available
     if (!appValuesFromPreference.isDynamicColor || appValuesFromPreference.dynamicColorAvailable) {
