@@ -23,15 +23,21 @@ class ColorPaletteExtractor {
   }) async {
     _validateParameters(maxColors, resize, binSize);
 
+    ui.Image? image;
+    ui.Image? resizedImage;
     try {
-      final image = await _loadImage(imageProvider);
-      final resizedImage = await _resizeImage(image, resize);
+      image = await _loadImage(imageProvider);
+      resizedImage = await _resizeImage(image, resize);
       final pixelData = await _extractPixelData(resizedImage);
 
       final colorHistogram = _buildColorHistogram(pixelData, binSize);
       return _getSortedColors(colorHistogram, maxColors);
     } catch (e) {
       throw Exception('Failed to extract colors: $e');
+    } finally {
+      // Dispose GPU resources for both images
+      resizedImage?.dispose();
+      image?.dispose();
     }
   }
 
