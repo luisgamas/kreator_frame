@@ -292,13 +292,22 @@ class DataSourceImpl extends DataSource {
   // Widget Operations
   // ============================================================
 
+  /// Cache for loaded widgets to avoid repeated asset loading and zip decoding.
+  final Map<String, List<WidgetEntity>> _widgetCache = {};
+
   /// Retrieves the list of widgets (KWGT or KLWP) from the assets folder.
   /// Loads zip files, extracts thumbnails, and creates WidgetEntity objects.
+  /// Results are cached to avoid repeated expensive asset loading.
   /// [filesExt] can be 'kwgt' or 'klwp'
   /// [thumbName] is the thumbnail filename within the zip
   @override
   Future<List<WidgetEntity>> getListOfWidgets(
       String filesExt, String thumbName) async {
+    // Return cached result if available
+    if (_widgetCache.containsKey(filesExt)) {
+      return _widgetCache[filesExt]!;
+    }
+
     List<WidgetEntity> widgets = [];
     String folderAsset = '';
 
@@ -316,18 +325,33 @@ class DataSourceImpl extends DataSource {
       List<int> bytes = data.buffer.asUint8List();
 
       Archive archive = ZipDecoder().decodeBytes(bytes);
+      try {
+        // Find thumbnail file, skip if not found
+        ArchiveFile? thumbFile;
+        for (final file in archive) {
+          if (file.name == thumbName) {
+            thumbFile = file;
+            break;
+          }
+        }
 
-      ArchiveFile? thumbFile =
-          archive.firstWhere((file) => file.name == thumbName);
+        if (thumbFile == null) continue;
 
-      widgets.add(WidgetEntity(
-        nameWidget: zipFileName.replaceAll('.$filesExt', ''),
-        nameDeveloper: Environment.userDeveloperName,
-        widgetThumbnail: thumbFile.content,
-        assetPath: '$folderAsset/$zipFileName',
-      ));
+        widgets.add(WidgetEntity(
+          nameWidget: zipFileName.replaceAll('.$filesExt', ''),
+          nameDeveloper: Environment.userDeveloperName,
+          widgetThumbnail: Uint8List.fromList(thumbFile.content as List<int>),
+          assetPath: '$folderAsset/$zipFileName',
+        ));
+      } finally {
+        // Archive doesn't have an explicit dispose, but we clear the reference
+        // to help GC collect the decoded data
+        archive.clear();
+      }
     }
 
+    // Cache the result
+    _widgetCache[filesExt] = widgets;
     return widgets;
   }
 
