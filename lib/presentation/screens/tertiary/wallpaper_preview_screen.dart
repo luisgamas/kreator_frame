@@ -369,8 +369,8 @@ class _LocationButton extends ConsumerWidget {
   }
 
   void _applyWallpaper(BuildContext context, WidgetRef ref) async {
-    final repository = ref.watch(repositoryProvider);
-    final appRouter = ref.watch(appRouterProvider);
+    final repository = ref.read(repositoryProvider);
+    final appRouter = ref.read(appRouterProvider);
     final colors = Theme.of(context).colorScheme;
 
     ref.read(setWallpaperProvider.notifier).changeState();
@@ -419,8 +419,8 @@ class _WallpaperChooserButton extends ConsumerWidget {
   }
 
   void _openChooser(BuildContext context, WidgetRef ref) async {
-    final repository = ref.watch(repositoryProvider);
-    final appRouter = ref.watch(appRouterProvider);
+    final repository = ref.read(repositoryProvider);
+    final appRouter = ref.read(appRouterProvider);
     final colors = Theme.of(context).colorScheme;
 
     ref.read(setWallpaperProvider.notifier).changeState();
@@ -463,8 +463,8 @@ class _NativePickerButton extends ConsumerWidget {
   }
 
   void _openNativePicker(BuildContext context, WidgetRef ref) async {
-    final repository = ref.watch(repositoryProvider);
-    final appRouter = ref.watch(appRouterProvider);
+    final repository = ref.read(repositoryProvider);
+    final appRouter = ref.read(appRouterProvider);
     final colors = Theme.of(context).colorScheme;
 
     ref.read(setWallpaperProvider.notifier).changeState();
