@@ -94,20 +94,17 @@ class _HeroImagePreview extends StatelessWidget {
       child: InteractiveViewer(
         clipBehavior: Clip.none,
         constrained: false,
-        child: Image(
-          image: CachedNetworkImageProvider(wallpaperEntity.url),
+        child: CachedNetworkImage(
+          imageUrl: wallpaperEntity.url,
           width: size.width,
           height: size.height,
           fit: BoxFit.fitHeight,
           filterQuality: FilterQuality.high,
-          loadingBuilder: (context, child, loadingProgress) {
-            return loadingProgress == null
-            ? child
-            : const Center(
-              child: CircularProgressIndicator(strokeCap: StrokeCap.round),
-            );
-          },
-          errorBuilder: (_, _, _) => const Center(
+          memCacheWidth: (size.width * 1.5).round(),
+          placeholder: (context, url) => const Center(
+            child: CircularProgressIndicator(strokeCap: StrokeCap.round),
+          ),
+          errorWidget: (_, _, _) => const Center(
             child: Icon(
               Hicon.dangerTriangleOutline
             ),
