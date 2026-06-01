@@ -54,6 +54,12 @@ class KustomWidgetConfig {
     required this.tabLabel,
   });
 
+  /// Display label for the KWGT tab.
+  static const String kwgtTabLabel = 'KWGT';
+
+  /// Display label for the KLWP tab.
+  static const String klwpTabLabel = 'KLWP';
+
   /// Configuration for KWGT widgets.
   ///
   /// KWGT stands for Kustom Widget. These are smaller Android app widgets
@@ -68,7 +74,7 @@ class KustomWidgetConfig {
     cellHeight: 262,
     previewFit: BoxFit.scaleDown,
     addPadding: true,
-    tabLabel: 'KWGT',
+    tabLabel: kwgtTabLabel,
   );
 
   /// Configuration for KLWP live wallpapers.
@@ -84,7 +90,7 @@ class KustomWidgetConfig {
     cellHeight: 352,
     previewFit: BoxFit.cover,
     addPadding: false,
-    tabLabel: 'KLWP',
+    tabLabel: klwpTabLabel,
   );
 }
 

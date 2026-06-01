@@ -6,6 +6,8 @@
 > Skills aplicadas: `flutter-clean-architect` · `flutter-riverpod-expert`
 >
 > Fecha: 2026-05-30
+>
+> Última actualización: 2026-05-31 — Fix 2.1 (TabBarEntity) aplicado.
 
 ---
 
@@ -27,7 +29,7 @@
 
 | Severidad | Cantidad | Descripción |
 |-----------|----------|-------------|
-| 🔴 Crítico | 4 | Race conditions, fuga de memoria en assets, efectos secundarios en `build()` |
+| 🔴 Crítico | 3 | Race conditions, fuga de memoria en assets, efectos secundarios en `build()` |
 | 🟠 Alto | 5 | Fugas de memoria en imágenes/UI, falta de `ref.mounted`, acoplamiento domain↔presentation |
 | 🟡 Medio | 6 | Rebuilds innecesarios, falta de caching, dependencias sin DI |
 | 🟢 Bajo | 3 | Código sin usar, constantes mezcladas, mejoras de UX |
@@ -53,58 +55,64 @@
 | 7.3 firstWhere sin orElse | ✅ RESUELTO | `4fb6553` |
 | 7.4 MyApp efecto secundario | ⏭️ OMITIDO | bajo impacto |
 | 7.5 setKeyValue sin await | ✅ RESUELTO | `11cf168` |
-| 2.1 TabBarEntity Widget | ⏭️ PENDIENTE | refactor grande |
+| 2.1 TabBarEntity Widget | ✅ RESUELTO | — |
 | 2.3 NetworkFailure sin usar | ⏭️ OMITIDO | UX |
 
 ---
 
 ## 2. Arquitectura Clean Architecture
 
-### 2.1 🔴 `TabBarEntity` contiene `Widget` — violación de la capa Domain ⏭️ PENDIENTE (refactor grande, requiere cambios en múltiples archivos)
+### 2.1 🔴 `TabBarEntity` contiene `Widget` — violación de la capa Domain ✅ RESUELTO (2026-05-31)
 
-**Archivo:** `lib/domain/entities/tab_bar_entity.dart`
+**Archivos:**
+- `lib/domain/entities/tab_bar_entity.dart` — entidad ahora es puro dato (`TabBarType` enum + `String label`).
+- `lib/presentation/providers/tabs_bar_app_provider.dart` — ya no construye widgets, solo emite entidades.
+- `lib/presentation/screens/home_screen.dart` — mapea `TabBarEntity` a widgets vía `switch` y deriva `Tab` desde `label`.
+- `lib/presentation/widgets/appbar/custom_sliver_appbar.dart` — recibe `List<Tab>` como parámetro (no consulta el provider).
+- `lib/presentation/screens/secondary/kustom_widgets_screen.dart` — expone `kwgtTabLabel` / `klwpTabLabel` como `static const String` para uso en contextos `const`.
 
-**Problema:**
+**Solución aplicada:**
+
+1. **Entidad de dominio pura** — `TabBarEntity` ahora solo contiene un `TabBarType` enum (`kustomWidget`, `kustomLiveWallpaper`, `wallpapers`) y un `String label`, sin tipos de Flutter UI:
+
 ```dart
-class TabBarEntity {
-  final Widget tabBarView;  // ← Widget de Flutter en la capa Domain
-  final Tab tabBar;          // ← Tab de Flutter en la capa Domain
-  ...
+enum TabBarType {
+  kustomWidget,
+  kustomLiveWallpaper,
+  wallpapers,
 }
-```
 
-La entidad de dominio contiene instancias de `Widget` y `Tab`, lo que acopla directamente la capa `domain` a Flutter UI. Según Clean Architecture, la capa `domain` debe ser independiente de cualquier framework de UI.
-
-**Funcionalidad actual:**
-El provider `TabsBarAppNotifier` construye instancias de `KustomWidgetsScreen` y `WallpapersScreen` (widgets de Flutter) dentro de la capa de dominio/infrastructure, y los almacena en la entidad.
-
-**Posible mejora:**
-Convertir `TabBarEntity` en una entidad de datos pura y mapear a widgets en la capa de presentación:
-
-```dart
-// Domain - entidad pura de datos
 class TabBarEntity {
-  final String type;    // 'kwgt' | 'klwp' | 'wallpapers'
+  final TabBarType type;
   final String label;
 
   const TabBarEntity({required this.type, required this.label});
+  // operator== y hashCode basados en type + label
 }
+```
 
-// Presentation - mapeo a widgets
-Widget buildTabView(TabBarEntity tab) {
+2. **Mapeo en `HomeScreen`** — el `switch` se encarga de traducir cada `TabBarEntity` a su widget concreto y a su `Tab` de cabecera:
+
+```dart
+Widget _buildTabView(TabBarEntity tab) {
   return switch (tab.type) {
-    'kwgt' => const KustomWidgetsScreen(config: KustomWidgetConfig.kwgt),
-    'klwp' => const KustomWidgetsScreen(config: KustomWidgetConfig.klwp),
-    'wallpapers' => const WallpapersScreen(),
-    _ => const SizedBox.shrink(),
+    TabBarType.kustomWidget =>
+      const KustomWidgetsScreen(config: KustomWidgetConfig.kwgt),
+    TabBarType.kustomLiveWallpaper =>
+      const KustomWidgetsScreen(config: KustomWidgetConfig.klwp),
+    TabBarType.wallpapers => const WallpapersScreen(),
   };
 }
 ```
 
-**Relaciones:**
-- `TabsBarAppNotifier` (`lib/presentation/providers/tabs_bar_app_provider.dart`) — debe modificarse para no construir widgets
-- `HomeScreen` (`lib/presentation/screens/home_screen.dart`) — debe mapear `TabBarEntity` a widgets
-- `KustomWidgetConfig` y las pantallas de Kustom no se rompen, solo cambia dónde se instancian
+3. **`CustomSliverAppBar` desacoplado** — recibe la lista de `Tab` ya construida, ya no consulta `tabsBarAppProvider` ni conoce `TabBarEntity`.
+
+**Resultado:**
+- La capa `domain` queda libre de dependencias con Flutter UI.
+- `TabsBarAppNotifier` solo emite datos puros.
+- La presentación traduce datos → UI en un único punto (`HomeScreen`).
+- `flutter analyze` y `flutter test` pasan sin issues.
+- No se rompe la funcionalidad: las pestañas siguen mostrándose en el mismo orden y con los mismos labels.
 
 ---
 
@@ -1069,7 +1077,6 @@ Future<void> setPreferenceForThemeMode(ThemeMode themeMode) async {
 
 | Archivo | Problema |
 |---------|----------|
-| `lib/domain/entities/tab_bar_entity.dart` | Contiene `Widget` en capa domain |
 | `lib/infrastructure/datasources/datasource_impl.dart` | `Archive` sin dispose, sin caching, `firstWhere` sin orElse, `CancelToken` frágil |
 | `lib/presentation/providers/app_values_preferences_provider.dart` | Race condition en `build()`, sin DI, sin `ref.mounted` |
 | `lib/presentation/providers/in_app_update_provider.dart` | Efecto secundario en `build()`, sin `ref.mounted` |

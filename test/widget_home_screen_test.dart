@@ -20,7 +20,11 @@ class MockPreferencesNotifier extends AppValuesPreferencesNotifier {
 class MockTabsBarNotifier extends TabsBarAppNotifier {
   @override
   Future<List<TabBarEntity>> build() async {
-    return [];
+    return const [
+      TabBarEntity(type: TabBarType.kustomWidget, label: 'KWGT'),
+      TabBarEntity(type: TabBarType.kustomLiveWallpaper, label: 'KLWP'),
+      TabBarEntity(type: TabBarType.wallpapers, label: 'WALLPAPERS'),
+    ];
   }
 }
 
@@ -46,6 +50,32 @@ void main() {
 
       final state = await container.read(tabsBarAppProvider.future);
       expect(state, isNotNull);
+      expect(state.length, 3);
+      expect(state[0].type, TabBarType.kustomWidget);
+      expect(state[0].label, 'KWGT');
+      expect(state[1].type, TabBarType.kustomLiveWallpaper);
+      expect(state[1].label, 'KLWP');
+      expect(state[2].type, TabBarType.wallpapers);
+      expect(state[2].label, 'WALLPAPERS');
+    });
+  });
+
+  group('TabBarEntity Tests', () {
+    test('equality and hashCode are based on type and label', () {
+      const a = TabBarEntity(type: TabBarType.kustomWidget, label: 'KWGT');
+      const b = TabBarEntity(type: TabBarType.kustomWidget, label: 'KWGT');
+      const c = TabBarEntity(type: TabBarType.kustomWidget, label: 'OTHER');
+
+      expect(a, equals(b));
+      expect(a.hashCode, equals(b.hashCode));
+      expect(a, isNot(equals(c)));
+    });
+
+    test('domain entity has no Flutter UI types', () {
+      const entity = TabBarEntity(type: TabBarType.wallpapers, label: 'WALLPAPERS');
+      // The entity is plain Dart data: only String + enum fields
+      expect(entity.type, isA<TabBarType>());
+      expect(entity.label, isA<String>());
     });
   });
 }

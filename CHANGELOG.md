@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Changed
+- Refactored `TabBarEntity` to a pure domain data entity (type + label) without any Flutter UI types. The `TabsBarAppNotifier` no longer builds widgets; the presentation layer (`HomeScreen`) maps each `TabBarEntity` to its concrete widget via a `switch` on a new `TabBarType` enum. `CustomSliverAppBar` now receives a `List<Tab>` parameter instead of reading the provider itself. Resolves the Clean Architecture violation tracked in `analisis.md` (section 2.1).
+
+---
+
 ## [v1.5.3] - 2026-03-07
 
 ### Fixed
