@@ -7,7 +7,7 @@
 >
 > Fecha: 2026-05-30
 >
-> Última actualización: 2026-06-01 — Bug 6.1 (acceso directo al repositorio desde widgets) resuelto mediante cuatro `OperationNotifier` dedicados (`WallpaperOperationsNotifier`, `DownloadOperationsNotifier`, `KustomOperationsNotifier`, `ExternalNavigationNotifier`). El issue alto pendiente queda cerrado.
+> Última actualización: 2026-06-01 — Bugs 2.2 (ThemeModeEntity con tipos Flutter en domain) y 2.3 (NetworkFailure código muerto) resueltos. Domain layer ahora libre de dependencias Flutter UI.
 
 ---
 
@@ -30,7 +30,7 @@
 | Severidad | Cantidad | Descripción |
 |-----------|----------|-------------|
 | 🔴 Crítico | 0 | Todos los issues críticos han sido resueltos (ver tabla de estado). |
-| 🟠 Alto | 1 | Mejora de `Environment` — `6.2` omitida. |
+| 🟠 Alto | 0 | Todos los issues altos han sido resueltos. |
 | 🟡 Medio | 1 | `KeyValueStorageServicesImpl` instanciado directamente — `3.5` pendiente. |
 | 🟢 Bajo | 0 | Sin issues abiertos. |
 
@@ -60,7 +60,8 @@
 | 7.4 MyApp efecto secundario | ⏭️ OMITIDO | bajo impacto |
 | 7.5 setKeyValue sin await | ✅ RESUELTO | `11cf168` |
 | 2.1 TabBarEntity Widget | ✅ RESUELTO | `c58ebfa` |
-| 2.3 NetworkFailure sin usar | ⏭️ OMITIDO | UX |
+| 2.2 ThemeModeEntity tipos Flutter | ✅ RESUELTO | (ver sección 2.2) |
+| 2.3 NetworkFailure sin usar | ✅ RESUELTO | (ver sección 2.3) |
 
 ---
 
@@ -120,11 +121,15 @@ Widget _buildTabView(TabBarEntity tab) {
 
 ---
 
-### 2.2 🟠 `ThemeModeEntity` contiene tipos Flutter
+### 2.2 🟠 `ThemeModeEntity` contiene tipos Flutter ✅ RESUELTO (2026-06-01)
 
-**Archivo:** `lib/domain/entities/theme_mode_entity.dart`
+**Archivos:**
+- `lib/domain/entities/theme_mode_entity.dart` — entidad ahora es puro dato (`ThemeModeOption` enum + `ThemeModeEntity` con solo `option`).
+- `lib/shared/utils/app_constants.dart` — `themeModeOptions` usa entidades puras; funciones de mapeo `themeModeFromOption`, `iconForThemeMode`, `titleForThemeMode` resuelven la UI en presentation.
+- `lib/presentation/widgets/theme/theme_mode_switcher.dart` — consume `AppConstants.iconForThemeMode` y `AppConstants.titleForThemeMode` para mapear a UI.
+- `lib/presentation/providers/app_values_preferences_provider.dart` — estado usa `ThemeModeOption` con getter `themeModeForApp` que mapea a `ThemeMode`.
 
-**Problema:**
+**Problema original:**
 ```dart
 class ThemeModeEntity {
   final ThemeMode themeMode;   // ← Tipo de Flutter
@@ -134,60 +139,79 @@ class ThemeModeEntity {
 }
 ```
 
-**Funcionalidad actual:**
-Se usa en `AppConstants.themeModeOptions` para definir las opciones del selector de tema.
+**Solución aplicada (siguiendo `flutter-clean-architect`):**
 
-**Posible mejora:**
-Separar la entidad de datos del widget de presentación:
+1. **Enum puro en domain** — `ThemeModeOption` reemplaza `ThemeMode` en la capa de dominio:
 
 ```dart
-// Domain
 enum ThemeModeOption { system, light, dark }
 
-// Presentation - mapear a UI
-IconData iconFor(ThemeModeOption option) => switch (option) { ... };
-String labelFor(ThemeModeOption option, BuildContext ctx) => switch (option) { ... };
+class ThemeModeEntity {
+  final ThemeModeOption option;
+  const ThemeModeEntity({required this.option});
+}
 ```
 
-**Relaciones:**
-- `AppConstants.themeModeOptions` (`lib/shared/utils/app_constants.dart`)
-- `ThemeModeSwitcher` (`lib/presentation/widgets/theme/theme_mode_switcher.dart`)
-- `AppValuesPreferencesNotifier` (`lib/presentation/providers/app_values_preferences_provider.dart`)
+2. **Funciones de mapeo en presentation** — `AppConstants` expone funciones estáticas que resuelven `ThemeModeOption` a tipos Flutter:
+
+```dart
+static ThemeMode themeModeFromOption(ThemeModeOption option) => switch (option) { ... };
+static IconData iconForThemeMode(ThemeModeOption option) => switch (option) { ... };
+static String Function(BuildContext) titleForThemeMode(ThemeModeOption option) => switch (option) { ... };
+```
+
+3. **Estado del notifier migrado** — `AppValuesPreferencesState` almacena `ThemeModeOption` y expone un getter para `ThemeMode`:
+
+```dart
+class AppValuesPreferencesState {
+  final ThemeModeOption themeModeOption;
+  ThemeMode get themeModeForApp => AppConstants.themeModeFromOption(themeModeOption);
+  ...
+}
+```
+
+**Resultado:**
+- La capa `domain` queda libre de dependencias con Flutter UI (`ThemeMode`, `IconData`, `BuildContext`).
+- Las funciones de mapeo viven en `AppConstants` (shared/utils), accesibles desde presentation sin contaminar domain.
+- `ThemeModeSwitcher` mantiene la misma funcionalidad visual.
+- `flutter analyze` y `flutter test` (25/25) pasan sin issues.
+- No se rompe la funcionalidad: el selector de tema sigue mostrando las mismas opciones con los mismos iconos y labels.
 
 ---
 
-### 2.3 🟡 `NetworkFailure` definido pero nunca usado ⏭️ OMITIDO (mejora de UX, bajo impacto)
+### 2.3 🟡 `NetworkFailure` definido pero nunca usado ✅ RESUELTO (2026-06-01)
 
-**Archivo:** `lib/domain/entities/network_failure.dart`
+**Archivo:** `lib/domain/entities/network_failure.dart` — **ELIMINADO**
 
-**Problema:**
-La clase `NetworkFailure` con su enum `NetworkFailureType` está definida y exportada pero nunca se utiliza en ningún archivo del proyecto. Todo el manejo de errores usa excepciones genéricas (`catch (e)`).
+**Problema original:**
+La clase `NetworkFailure` con su enum `NetworkFailureType` estaba definida y exportada pero nunca se utilizaba en ningún archivo del proyecto. Todo el manejo de errores usaba excepciones genéricas (`catch (e)`).
 
-**Funcionalidad actual:**
-Los datasources capturan errores y retornan valores por defecto (listas vacías, `false`, strings de error).
+**Análisis de la sugerencia original:**
+La sugerencia proponía implementar un sistema `Result<T>` con `Success` y `Failure`. Sin embargo, esto sería excesivo para el contexto actual del proyecto:
+- El proyecto maneja errores con `try/catch` y valores por defecto en los datasources.
+- Los `OperationNotifier` ya capturan errores y propagan resultados booleanos.
+- Implementar `Result<T>` requeriría refactorizar todos los datasources, repositories y notifiers.
 
-**Posible mejora:**
-Implementar un sistema de errores tipado en la capa de dominio y usarlo en los notifiers:
+**Solución aplicada:**
+Eliminar el código muerto. `NetworkFailure` se eliminó del proyecto y de `domain.dart`:
 
 ```dart
-// Domain - resultado tipado
-sealed class Result<T> {
-  const Result();
-}
-class Success<T> extends Result<T> {
-  final T data;
-  const Success(this.data);
-}
-class Failure<T> extends Result<T> {
-  final NetworkFailure failure;
-  const Failure(this.failure);
-}
+// domain.dart - antes
+export 'entities/network_failure.dart';  // ← eliminada
+
+// domain.dart - después
+// (línea eliminada)
 ```
 
-**Relaciones:**
-- `DataSourceImpl` — todos los métodos `catch` retornarían `Failure`
-- Todos los `AsyncNotifier` — usarían `AsyncValue.guard()` con el tipo de error
-- `ErrorView` — podría mostrar mensajes más específicos según el tipo de fallo
+**Justificación:**
+- Código muerto genera confusión sobre si debe usarse o no.
+- El manejo de errores actual es funcional y coherente con el patrón del proyecto.
+- Si en el futuro se necesita un sistema de errores tipado, se implementará de forma completa en ese momento.
+
+**Resultado:**
+- Domain layer sin código muerto.
+- `flutter analyze` y `flutter test` (25/25) pasan sin issues.
+- No se rompe funcionalidad: el manejo de errores existente no dependía de `NetworkFailure`.
 
 ---
 
@@ -1447,8 +1471,8 @@ Future<void> setPreferenceForThemeMode(ThemeMode themeMode) async {
 | `lib/main.dart` | Efecto secundario en `build()`, sin `ref.select()` | 5.1, 7.4 (ambos omitidos por bajo impacto) |
 | `lib/config/constants/environment.dart` | Mezcla de responsabilidades | 6.2 (omitido por mantenibilidad) |
 | `lib/shared/services/key_value_storage_service_impl.dart` | `SharedPreferences.getInstance()` repetido | 4.6 |
-| `lib/domain/entities/theme_mode_entity.dart` | Tipos Flutter en domain | 2.2 (análisis, sin fix) |
-| `lib/domain/entities/network_failure.dart` | Nunca usado | 2.3 (omitido por bajo impacto UX) |
+| `lib/domain/entities/theme_mode_entity.dart` | Tipos Flutter en domain | 2.2 ✅ RESUELTO |
+| `lib/domain/entities/network_failure.dart` | Nunca usado (código muerto) | 2.3 ✅ RESUELTO (eliminado) |
 | `lib/presentation/providers/tabs_bar_app_provider.dart` | Carga pesada sin caching | 4.1 (compartido vía `keepAlive`) |
 | `lib/presentation/providers/repository_provider.dart` | Sin DI del cancel token holder, sin sincronización de dependencias | 7.1 (fix reciente) |
 

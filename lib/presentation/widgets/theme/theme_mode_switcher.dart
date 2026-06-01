@@ -29,15 +29,15 @@ class ThemeModeSwitcher extends ConsumerWidget {
       ),
       delegate: SliverChildBuilderDelegate(
         (BuildContext context, int index) {
-          
+          final entity = AppConstants.themeModeOptions[index];
           final isSelectedThemeMode = appValuesFromPreference != null &&
-              AppConstants.themeModeOptions[index].themeMode == appValuesFromPreference.themeModeForApp;
-                
+              entity.option == appValuesFromPreference.themeModeOption;
+
           return GestureDetector(
             onTap: isSelectedThemeMode
                 ? null
                   : () => ref.read(appValuesPreferencesProvider.notifier)
-                          .setPreferenceForThemeMode(AppConstants.themeModeOptions[index].themeMode),
+                          .setPreferenceForThemeMode(entity.option),
             child: AnimatedContainer(
               duration: AppDurations.normal,
               decoration: BoxDecoration(
@@ -53,12 +53,12 @@ class ThemeModeSwitcher extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    AppConstants.themeModeOptions[index].icon,
+                    AppConstants.iconForThemeMode(entity.option),
                     size: AppIconSizes.md,
                     color: colors.onSurface,
                   ),
                   const Gap(AppSpacing.xxxs),
-                  Text(AppConstants.themeModeOptions[index].title(context),
+                  Text(AppConstants.titleForThemeMode(entity.option)(context),
                       style: textStyles.titleSmall)
                 ],
               ),

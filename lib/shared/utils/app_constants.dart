@@ -36,23 +36,37 @@ class AppConstants {
     Color(0xFF607D8B), // neutral light
   ];
 
-  /// List of available theme mode options.
-  /// Includes System, Light, and Dark theme modes with localized labels and icons.
-  static final List<ThemeModeEntity> themeModeOptions = [
-    ThemeModeEntity(
-      themeMode: ThemeMode.system,
-      title: (context) => AppLocalizations.of(context)!.themeSystem,
-      icon: Hicon.situation2Outline,
-    ),
-    ThemeModeEntity(
-      themeMode: ThemeMode.light,
-      title: (context) => AppLocalizations.of(context)!.themeLight,
-      icon: Hicon.sun1Outline,
-    ),
-    ThemeModeEntity(
-      themeMode: ThemeMode.dark,
-      title: (context) => AppLocalizations.of(context)!.themeDark,
-      icon: Hicon.moonOutline,
-    ),
+  /// List of available theme mode options as pure domain entities.
+  static const List<ThemeModeEntity> themeModeOptions = [
+    ThemeModeEntity(option: ThemeModeOption.system),
+    ThemeModeEntity(option: ThemeModeOption.light),
+    ThemeModeEntity(option: ThemeModeOption.dark),
   ];
+
+  /// Maps a [ThemeModeOption] to its Flutter [ThemeMode] equivalent.
+  static ThemeMode themeModeFromOption(ThemeModeOption option) {
+    return switch (option) {
+      ThemeModeOption.system => ThemeMode.system,
+      ThemeModeOption.light => ThemeMode.light,
+      ThemeModeOption.dark => ThemeMode.dark,
+    };
+  }
+
+  /// Maps a [ThemeModeOption] to its display icon.
+  static IconData iconForThemeMode(ThemeModeOption option) {
+    return switch (option) {
+      ThemeModeOption.system => Hicon.situation2Outline,
+      ThemeModeOption.light => Hicon.sun1Outline,
+      ThemeModeOption.dark => Hicon.moonOutline,
+    };
+  }
+
+  /// Maps a [ThemeModeOption] to its localized title.
+  static String Function(BuildContext) titleForThemeMode(ThemeModeOption option) {
+    return switch (option) {
+      ThemeModeOption.system => (context) => AppLocalizations.of(context)!.themeSystem,
+      ThemeModeOption.light => (context) => AppLocalizations.of(context)!.themeLight,
+      ThemeModeOption.dark => (context) => AppLocalizations.of(context)!.themeDark,
+    };
+  }
 }

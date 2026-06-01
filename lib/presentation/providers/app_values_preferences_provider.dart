@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // 🌎 Project imports:
 import 'package:kreator_frame/config/constants/environment.dart';
+import 'package:kreator_frame/domain/domain.dart';
 import 'package:kreator_frame/shared/services/services.dart';
 import 'package:kreator_frame/shared/utils/utils.dart';
 
@@ -13,36 +14,39 @@ import 'package:kreator_frame/shared/utils/utils.dart';
 /// State that holds user preferences for app appearance and behavior.
 ///
 /// Stores:
-/// - Theme mode (light, dark, system)
+/// - Theme mode option (system, light, dark) as a pure domain enum
 /// - Accent color for the theme
 /// - Dynamic color (Material You) toggle
 /// - Whether dynamic colors are actually available on this device
 /// - Grid view preferences (currently unused)
 class AppValuesPreferencesState {
   final Color colorAccentForTheme;
-  final ThemeMode themeModeForApp;
+  final ThemeModeOption themeModeOption;
   final bool isDynamicColor;
   final bool dynamicColorAvailable;
   final bool minimalViewForGrids;
 
   AppValuesPreferencesState({
     Color? colorAccentForTheme,
-    ThemeMode? themeModeForApp,
+    ThemeModeOption? themeModeOption,
     this.isDynamicColor = false,
     this.dynamicColorAvailable = false,
     this.minimalViewForGrids = false,
   })  : colorAccentForTheme = colorAccentForTheme ?? AppConstants.accentColors[4],
-        themeModeForApp = themeModeForApp ?? AppConstants.themeModeOptions[0].themeMode;
+        themeModeOption = themeModeOption ?? ThemeModeOption.system;
+
+  /// Maps the domain [themeModeOption] to Flutter's [ThemeMode] for MaterialApp.
+  ThemeMode get themeModeForApp => AppConstants.themeModeFromOption(themeModeOption);
 
   AppValuesPreferencesState copyWith({
     Color? colorAccentForTheme,
-    ThemeMode? themeModeForApp,
+    ThemeModeOption? themeModeOption,
     bool? isDynamicColor,
     bool? dynamicColorAvailable,
     bool? minimalViewForGrids,
   }) => AppValuesPreferencesState(
     colorAccentForTheme: colorAccentForTheme ?? this.colorAccentForTheme,
-    themeModeForApp: themeModeForApp ?? this.themeModeForApp,
+    themeModeOption: themeModeOption ?? this.themeModeOption,
     isDynamicColor: isDynamicColor ?? this.isDynamicColor,
     dynamicColorAvailable: dynamicColorAvailable ?? this.dynamicColorAvailable,
     minimalViewForGrids: minimalViewForGrids ?? this.minimalViewForGrids,
@@ -69,17 +73,17 @@ class AppValuesPreferencesNotifier extends AsyncNotifier<AppValuesPreferencesSta
     final indexColorAccent = await keyValueStorageServices.getKeyValue<int>(Environment.keyColorTheme) ?? 4;
     final indexThemeMode = await keyValueStorageServices.getKeyValue<String>(Environment.keyThemeMode);
 
-    final themeMode = switch (indexThemeMode) {
-      'system' => AppConstants.themeModeOptions[0].themeMode,
-      'light' => AppConstants.themeModeOptions[1].themeMode,
-      'dark' => AppConstants.themeModeOptions[2].themeMode,
-      _ => ThemeMode.system,
+    final themeModeOption = switch (indexThemeMode) {
+      'system' => ThemeModeOption.system,
+      'light' => ThemeModeOption.light,
+      'dark' => ThemeModeOption.dark,
+      _ => ThemeModeOption.system,
     };
 
     if (indexColorAccent == -1) {
       return AppValuesPreferencesState(
         isDynamicColor: true,
-        themeModeForApp: themeMode,
+        themeModeOption: themeModeOption,
       );
     } else {
       final clampedIndex = (indexColorAccent >= 0 && indexColorAccent < AppConstants.accentColors.length)
@@ -88,20 +92,20 @@ class AppValuesPreferencesNotifier extends AsyncNotifier<AppValuesPreferencesSta
       return AppValuesPreferencesState(
         isDynamicColor: false,
         colorAccentForTheme: AppConstants.accentColors[clampedIndex],
-        themeModeForApp: themeMode,
+        themeModeOption: themeModeOption,
       );
     }
   }
 
-  Future<void> setPreferenceForThemeMode(ThemeMode themeMode) async {
+  Future<void> setPreferenceForThemeMode(ThemeModeOption option) async {
     final currentState = state.value;
     if (currentState == null) return;
 
     final keyValueStorageServices = KeyValueStorageServicesImpl();
-    await keyValueStorageServices.setKeyValue(Environment.keyThemeMode, themeMode.name);
+    await keyValueStorageServices.setKeyValue(Environment.keyThemeMode, option.name);
     if (!ref.mounted) return;
-    if (themeMode != currentState.themeModeForApp) {
-      state = AsyncData(currentState.copyWith(themeModeForApp: themeMode));
+    if (option != currentState.themeModeOption) {
+      state = AsyncData(currentState.copyWith(themeModeOption: option));
     }
   }
 
