@@ -224,11 +224,11 @@ class _ApplyWallpaperButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final setWallpaperState = ref.watch(setWallpaperProvider);
+    final isOperationRunning = ref.watch(wallpaperOperationsProvider);
     final colors = Theme.of(context).colorScheme;
 
     return CustomIconButton.filled(
-      onPressed: setWallpaperState
+      onPressed: isOperationRunning
         ? null
         : () => _showBottomCard(
           context: context,
@@ -238,7 +238,7 @@ class _ApplyWallpaperButton extends ConsumerWidget {
       icon: Hicon.send1Outline,
       iconColor: Colors.black,
       color: Colors.white,
-      isLoading: setWallpaperState,
+      isLoading: isOperationRunning,
       buttonSize: 56,
     );
   }
@@ -346,7 +346,7 @@ class _LocationButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final setWallpaperState = ref.watch(setWallpaperProvider);
+    final isOperationRunning = ref.watch(wallpaperOperationsProvider);
     final textStyles = Theme.of(context).textTheme;
 
     return Column(
@@ -354,9 +354,11 @@ class _LocationButton extends ConsumerWidget {
       children: [
         CustomIconButton.tonal(
           buttonSize: 56,
-          onPressed: setWallpaperState ? null : () => _applyWallpaper(context, ref),
+          onPressed: isOperationRunning
+            ? null
+            : () => _applyWallpaper(context, ref),
           icon: icon,
-          isLoading: setWallpaperState,
+          isLoading: isOperationRunning,
         ),
         const Gap(AppSpacing.xxxs),
         Text(
@@ -368,17 +370,15 @@ class _LocationButton extends ConsumerWidget {
     );
   }
 
-  void _applyWallpaper(BuildContext context, WidgetRef ref) async {
-    final repository = ref.read(repositoryProvider);
+  Future<void> _applyWallpaper(BuildContext context, WidgetRef ref) async {
     final appRouter = ref.read(appRouterProvider);
     final colors = Theme.of(context).colorScheme;
 
-    ref.read(setWallpaperProvider.notifier).changeState();
-
-    final result = await repository.setWallpaper(wallpaperEntity.url, screenLocation);
+    final result = await ref
+        .read(wallpaperOperationsProvider.notifier)
+        .applyToLocation(wallpaperEntity, screenLocation);
 
     if (context.mounted) {
-      ref.read(setWallpaperProvider.notifier).changeState();
       if (result) {
         SnackbarHelpers.showSuccess(
           context: context,
@@ -407,28 +407,26 @@ class _WallpaperChooserButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final setWallpaperState = ref.watch(setWallpaperProvider);
+    final isOperationRunning = ref.watch(wallpaperOperationsProvider);
 
     return CustomButton.text(
       width: double.infinity,
       borderRadius: AppRadius.radiusLg,
-      isLoading: setWallpaperState,
+      isLoading: isOperationRunning,
       text: AppLocalizations.of(context)!.bottomWallSelectorChooser,
       onPressed: () => _openChooser(context, ref),
     );
   }
 
-  void _openChooser(BuildContext context, WidgetRef ref) async {
-    final repository = ref.read(repositoryProvider);
+  Future<void> _openChooser(BuildContext context, WidgetRef ref) async {
     final appRouter = ref.read(appRouterProvider);
     final colors = Theme.of(context).colorScheme;
 
-    ref.read(setWallpaperProvider.notifier).changeState();
-
-    final result = await repository.openWallpaperChooser(wallpaperEntity.url);
+    final result = await ref
+        .read(wallpaperOperationsProvider.notifier)
+        .openInChooser(wallpaperEntity);
 
     if (context.mounted) {
-      ref.read(setWallpaperProvider.notifier).changeState();
       if (!result) {
         SnackbarHelpers.showError(
           context: context,
@@ -451,28 +449,26 @@ class _NativePickerButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final setWallpaperState = ref.watch(setWallpaperProvider);
+    final isOperationRunning = ref.watch(wallpaperOperationsProvider);
 
     return CustomButton.tonal(
       width: double.infinity,
       borderRadius: AppRadius.radiusLg,
-      isLoading: setWallpaperState,
+      isLoading: isOperationRunning,
       text: AppLocalizations.of(context)!.bottomWallSelectorNative,
       onPressed: () => _openNativePicker(context, ref),
     );
   }
 
-  void _openNativePicker(BuildContext context, WidgetRef ref) async {
-    final repository = ref.read(repositoryProvider);
+  Future<void> _openNativePicker(BuildContext context, WidgetRef ref) async {
     final appRouter = ref.read(appRouterProvider);
     final colors = Theme.of(context).colorScheme;
 
-    ref.read(setWallpaperProvider.notifier).changeState();
-
-    final result = await repository.openNativeWallpaperPicker(wallpaperEntity.url);
+    final result = await ref
+        .read(wallpaperOperationsProvider.notifier)
+        .openInNativePicker(wallpaperEntity);
 
     if (context.mounted) {
-      ref.read(setWallpaperProvider.notifier).changeState();
       if (!result) {
         SnackbarHelpers.showError(
           context: context,

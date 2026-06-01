@@ -24,8 +24,9 @@ import 'package:kreator_frame/shared/utils/utils.dart';
 /// - Success confirmation
 ///
 /// State management is handled entirely through providers:
-/// - `progressDownloaderProvider`: Tracks download progress
-/// - `permissionsProvider`: Manages storage permission state
+/// - `downloadOperationsProvider`: Tracks download progress and exposes the
+///   `download` / `cancel` operations that talk to the repository.
+/// - `permissionsProvider`: Manages storage permission state.
 ///
 /// The widget uses MediaStore API for proper scoped storage support on Android 10+.
 class WallpaperDownloadButton extends ConsumerWidget {
@@ -41,7 +42,7 @@ class WallpaperDownloadButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final permissionsAsync = ref.watch(permissionsProvider);
-    final progressValue = ref.watch(progressDownloaderProvider);
+    final progressValue = ref.watch(downloadOperationsProvider);
     final colors = Theme.of(context).colorScheme;
 
     // Show progress indicator with cancel when a download is active
@@ -127,15 +128,13 @@ class WallpaperDownloadButton extends ConsumerWidget {
     );
   }
 
-  /// Cancels the active wallpaper download.
+  /// Cancels the active wallpaper download through the operations notifier.
   void _cancelDownload(
     BuildContext context,
     WidgetRef ref,
     ColorScheme colors,
   ) {
-    final repository = ref.read(repositoryProvider);
-    repository.cancelDownloadWallpaper();
-    ref.read(progressDownloaderProvider.notifier).changeProgress(null);
+    ref.read(downloadOperationsProvider.notifier).cancel();
     SnackbarHelpers.showSuccess(
       context: context,
       message: 'Download cancelled',
@@ -143,58 +142,28 @@ class WallpaperDownloadButton extends ConsumerWidget {
     );
   }
 
-  /// Download the wallpaper using MediaStore API (Scoped Storage).
+  /// Downloads the wallpaper through the operations notifier.
   ///
-  /// This method does not require permissions on Android 10+ (API 29+) because it uses
-  /// MediaStore to save the image directly to the device gallery.
+  /// This method does not require permissions on Android 10+ (API 29+) because
+  /// the underlying datasource uses MediaStore to save the image directly to
+  /// the device gallery.
   Future<void> _downloadWallpaper(
     BuildContext context,
     WidgetRef ref,
     ColorScheme colors,
   ) async {
-    final repository = ref.read(repositoryProvider);
-    final progressNotifier = ref.read(progressDownloaderProvider.notifier);
+    final success = await ref
+        .read(downloadOperationsProvider.notifier)
+        .download(wallpaperEntity);
 
-    progressNotifier.changeProgress(-1.0);
-
-    try {
-      final success = await repository.downloadWallpaper(
-        wallpaperEntity.url.trim(),
-        wallpaperEntity.name,
-        onProgressUpdate: (progress) {
-          if (progress == null) {
-            // Content-Length unknown — show indeterminate spinner
-            if (!progressNotifier.isIndeterminate) {
-              progressNotifier.changeProgress(-1.0);
-            }
-          } else {
-            // Determinate progress (0.0 to 1.0)
-            progressNotifier.changeProgress(progress);
-          }
-        },
-      );
-
-      if (context.mounted) {
-        progressNotifier.changeProgress(null);
-
-        if (success) {
-          SnackbarHelpers.showSuccess(
-            context: context,
-            message: AppLocalizations.of(context)!.downloadOk,
-            color: colors,
-          );
-        } else {
-          SnackbarHelpers.showError(
-            context: context,
-            message: AppLocalizations.of(context)!.downloadError,
-            color: colors,
-          );
-        }
-      }
-    } catch (e) {
-      progressNotifier.changeProgress(null);
-
-      if (context.mounted) {
+    if (context.mounted) {
+      if (success) {
+        SnackbarHelpers.showSuccess(
+          context: context,
+          message: AppLocalizations.of(context)!.downloadOk,
+          color: colors,
+        );
+      } else {
         SnackbarHelpers.showError(
           context: context,
           message: AppLocalizations.of(context)!.downloadError,

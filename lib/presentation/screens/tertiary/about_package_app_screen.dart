@@ -18,8 +18,8 @@ class AboutPackageAppScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final packageAppInfo = ref.watch(packageInfoProvider);
-    final repository = ref.watch(repositoryProvider);
     final colors = Theme.of(context).colorScheme;
+    final navOps = ref.watch(externalNavigationProvider.notifier);
     final packageName = packageAppInfo.value?.appName ?? 'Error Package Name';
 
 
@@ -60,7 +60,7 @@ class AboutPackageAppScreen extends ConsumerWidget {
                 SocialMediaButtonList(
                   onTwitterPressed: () {
                     Environment.userTwitterUrl != 'NA' && Environment.userTwitterUrl != 'Error TWITTER'
-                    ? repository.launchExternalApp(Environment.userTwitterUrl)
+                    ? navOps.launchExternalApp(Environment.userTwitterUrl)
                     : SnackbarHelpers.showError(
                       context: context,
                       message: AppLocalizations.of(context)!.errorMessage,
@@ -69,7 +69,7 @@ class AboutPackageAppScreen extends ConsumerWidget {
                   },
                   onInstagramPressed: () {
                     Environment.userInstagramUrl != 'NA' && Environment.userInstagramUrl != 'Error INSTAGRAM'
-                    ? repository.launchExternalApp(Environment.userInstagramUrl)
+                    ? navOps.launchExternalApp(Environment.userInstagramUrl)
                     : SnackbarHelpers.showError(
                       context: context,
                       message: AppLocalizations.of(context)!.errorMessage,
@@ -78,7 +78,7 @@ class AboutPackageAppScreen extends ConsumerWidget {
                   },
                   onPersonalSitePressed: () {
                     Environment.userPlayStoreUrl != 'NA' && Environment.userPlayStoreUrl != 'Error GOOGLE_PLAY_STORE'
-                    ? repository.launchExternalApp(Environment.userPlayStoreUrl)
+                    ? navOps.launchExternalApp(Environment.userPlayStoreUrl)
                     : SnackbarHelpers.showError(
                       context: context,
                       message: AppLocalizations.of(context)!.errorMessage,

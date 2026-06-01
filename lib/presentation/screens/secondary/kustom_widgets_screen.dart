@@ -119,7 +119,6 @@ class KustomWidgetsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final repository = ref.watch(repositoryProvider);
     final widgets = ref.watch(getWidgetsProvider(config.widgetExtension));
 
     return widgets.when(
@@ -144,18 +143,7 @@ class KustomWidgetsScreen extends ConsumerWidget {
                   bottomText: widget.nameDeveloper,
                   fitPreview: config.previewFit,
                   addPadding: config.addPadding,
-                  onTap: () async {
-                    final installed = await repository.isKustomAppInstalled(config.targetPackage);
-                    if (installed) {
-                      await repository.sendWidgetToKustomApp(
-                        packageName: config.targetPackage,
-                        editorActivity: config.editorActivity,
-                        assetPath: widget.assetPath,
-                      );
-                    } else {
-                      await repository.launchExternalApp(config.externalLink);
-                    }
-                  },
+                  onTap: () => _handleWidgetTap(context, ref, widget.assetPath),
                 ),
               ),
             );
@@ -169,5 +157,35 @@ class KustomWidgetsScreen extends ConsumerWidget {
         child: CircularProgressIndicator(strokeCap: StrokeCap.round),
       ),
     );
+  }
+
+  /// Tapping a widget card dispatches the work to the dedicated
+  /// presentation-layer notifiers ([kustomOperationsProvider] for the
+  /// installed check / send intent, [externalNavigationProvider] for the
+  /// Play Store fallback) so this widget never reaches into the
+  /// repository directly.
+  Future<void> _handleWidgetTap(
+    BuildContext context,
+    WidgetRef ref,
+    String assetPath,
+  ) async {
+    final kustomOps = ref.read(kustomOperationsProvider.notifier);
+    final navOps = ref.read(externalNavigationProvider.notifier);
+
+    final installed = await kustomOps.isKustomAppInstalled(
+      config.targetPackage,
+    );
+
+    if (!context.mounted) return;
+
+    if (installed) {
+      await kustomOps.sendWidgetToKustomApp(
+        packageName: config.targetPackage,
+        editorActivity: config.editorActivity,
+        assetPath: assetPath,
+      );
+    } else {
+      await navOps.launchExternalApp(config.externalLink);
+    }
   }
 }

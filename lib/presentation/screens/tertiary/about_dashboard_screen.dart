@@ -16,8 +16,8 @@ class AboutDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final repository = ref.watch(repositoryProvider);
     final textStyles = Theme.of(context).textTheme;
+    final navOps = ref.watch(externalNavigationProvider.notifier);
 
     // * Widget view
     return Scaffold(
@@ -53,9 +53,12 @@ class AboutDashboardScreen extends ConsumerWidget {
 
                 // * Social media links
                 SocialMediaButtonList(
-                  onTwitterPressed: () => repository.launchExternalApp(Environment.externalLinkTwitter),
-                  onInstagramPressed: () => repository.launchExternalApp(Environment.externalLinkInstagram),
-                  onPersonalSitePressed: () => repository.launchExternalApp(Environment.externalLinkWebsite),
+                  onTwitterPressed: () =>
+                      navOps.launchExternalApp(Environment.externalLinkTwitter),
+                  onInstagramPressed: () =>
+                      navOps.launchExternalApp(Environment.externalLinkInstagram),
+                  onPersonalSitePressed: () =>
+                      navOps.launchExternalApp(Environment.externalLinkWebsite),
                 ),
 
                 const Gap(AppSpacing.xl),

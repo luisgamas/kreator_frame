@@ -7,7 +7,7 @@
 >
 > Fecha: 2026-05-30
 >
-> Última actualización: 2026-06-01 — Bug 7.1 (`_activeCancelToken` pérdida de referencia) resuelto mediante `DownloadCancelTokenHolder` con DI. Todos los issues críticos marcados como pendientes quedan cerrados.
+> Última actualización: 2026-06-01 — Bug 6.1 (acceso directo al repositorio desde widgets) resuelto mediante cuatro `OperationNotifier` dedicados (`WallpaperOperationsNotifier`, `DownloadOperationsNotifier`, `KustomOperationsNotifier`, `ExternalNavigationNotifier`). El issue alto pendiente queda cerrado.
 
 ---
 
@@ -30,7 +30,7 @@
 | Severidad | Cantidad | Descripción |
 |-----------|----------|-------------|
 | 🔴 Crítico | 0 | Todos los issues críticos han sido resueltos (ver tabla de estado). |
-| 🟠 Alto | 2 | Acoplamiento `domain`↔`presentation` (acceso directo al repositorio desde widgets) — `6.1` pendiente; mejora de `Environment` — `6.2` omitida. |
+| 🟠 Alto | 1 | Mejora de `Environment` — `6.2` omitida. |
 | 🟡 Medio | 1 | `KeyValueStorageServicesImpl` instanciado directamente — `3.5` pendiente. |
 | 🟢 Bajo | 0 | Sin issues abiertos. |
 
@@ -52,7 +52,7 @@
 | 5.1 MyApp ref.select | ⏭️ OMITIDO | impacto bajo |
 | 5.2 WallpaperDownloadButton rebuilds | ⏭️ OMITIDO | impacto menor |
 | 5.3 keepAlive providers | ✅ CORRECTO | — |
-| 6.1 Acceso directo repository | ⏭️ PENDIENTE | refactor grande |
+| 6.1 Acceso directo repository | ✅ RESUELTO | (ver sección 6.1) |
 | 6.2 Environment responsabilidades | ⏭️ OMITIDO | mantenibilidad |
 | 7.1 _activeCancelToken pérdida de referencia | ✅ RESUELTO | (ver sección 7.1) |
 | 7.2 ref.watch en acciones | ✅ RESUELTO | `a53bc82` |
@@ -808,56 +808,287 @@ En general, `keepAlive` es correcto para este tipo de app. Solo sería problemá
 
 ## 6. Acoplamiento entre capas
 
-### 6.1 🟠 Acceso directo a `repositoryProvider` desde widgets ⏭️ PENDIENTE (refactor grande, requiere crear notifiers dedicados)
+### 6.1 🟠 Acceso directo a `repositoryProvider` desde widgets ✅ RESUELTO (2026-06-01)
 
-**Archivos afectados:**
-- `lib/presentation/screens/tertiary/wallpaper_preview_screen.dart` — `_LocationButton`, `_WallpaperChooserButton`, `_NativePickerButton`
-- `lib/presentation/screens/secondary/kustom_widgets_screen.dart` — `KustomWidgetsScreen`
-- `lib/presentation/screens/secondary/settings_screen.dart` — `_DonationBanner`
-- `lib/presentation/screens/tertiary/about_dashboard_screen.dart`
-- `lib/presentation/screens/tertiary/about_package_app_screen.dart`
+**Archivos:**
+- `lib/presentation/providers/wallpaper_operations_provider.dart` — `WallpaperOperationsNotifier` (3 ops de wallpaper centralizadas, reemplaza a `SetWallpaperNotifier`).
+- `lib/presentation/providers/download_operations_provider.dart` — `DownloadOperationsNotifier` (download + cancel, reemplaza a `ProgressDownloaderNotifier`).
+- `lib/presentation/providers/kustom_operations_provider.dart` — `KustomOperationsNotifier` (instalado check + send intent, nuevo).
+- `lib/presentation/providers/external_navigation_provider.dart` — `ExternalNavigationNotifier` (launch external app, nuevo).
+- `lib/presentation/providers/providers.dart` — barrel actualizado con los nuevos notifiers; los archivos `set_wallpaper_provider.dart` y `progress_downloader_provider.dart` se eliminan al quedar reemplazados.
+- `lib/presentation/screens/tertiary/wallpaper_preview_screen.dart` — `_LocationButton`, `_WallpaperChooserButton` y `_NativePickerButton` consumen `wallpaperOperationsProvider.notifier`.
+- `lib/presentation/screens/secondary/kustom_widgets_screen.dart` — `KustomWidgetsScreen` despacha a `kustomOperationsProvider` / `externalNavigationProvider` mediante un único `_handleWidgetTap`.
+- `lib/presentation/screens/secondary/settings_screen.dart` — `SettingsScreen` y `_DonationBanner` usan `externalNavigationProvider.notifier`.
+- `lib/presentation/screens/tertiary/about_dashboard_screen.dart` — consume `externalNavigationProvider.notifier`.
+- `lib/presentation/screens/tertiary/about_package_app_screen.dart` — consume `externalNavigationProvider.notifier`.
+- `lib/presentation/widgets/buttons/wallpaper_download_button.dart` — consume `downloadOperationsProvider.notifier` para `download` y `cancel`.
+- `test/presentation/operations_notifiers_test.dart` — 10 tests unitarios (uno por notifier + uno de invariante de capas) cubriendo forwarding al repositorio, manejo de loading, manejo de errores y reset de estado.
 
-**Problema:**
-Los widgets acceden directamente a `repositoryProvider` para llamar métodos como `setWallpaper`, `openNativeWallpaperPicker`, `isKustomAppInstalled`, `launchExternalApp`, etc.
+**Problema original:**
+13+ accesos directos a `repositoryProvider` desde widgets (y un widget que se autodocumenta con un `setWallpaperState = ref.watch(setWallpaperProvider)` para deshabilitar botones) dispersos por seis pantallas:
 
-Esto viola el patrón de capas: los widgets de presentación no deberían interactuar directamente con el repositorio. Debería haber un notifier intermedio que maneje la lógica de negocio.
-
-**Funcionalidad actual:**
-Al tocar el botón de "aplicar wallpaper", el widget llama directamente al repositorio:
 ```dart
-void _applyWallpaper(BuildContext context, WidgetRef ref) async {
-  final repository = ref.watch(repositoryProvider);  // ← Acceso directo
-  final result = await repository.setWallpaper(wallpaperEntity.url, screenLocation);
-  // ...
-}
+// _LocationButton
+final repository = ref.watch(repositoryProvider);
+final result = await repository.setWallpaper(wallpaperEntity.url, screenLocation);
+
+// _DonationBanner
+final repository = ref.watch(repositoryProvider);
+onPressed: () => repository.launchExternalApp(Environment.externalLinkBuyMeACoffe)
+
+// _LocationButton
+final repository = ref.read(repositoryProvider);
+final result = await repository.openNativeWallpaperPicker(wallpaperEntity.url);
+
+// KustomWidgetsScreen
+final repository = ref.watch(repositoryProvider);
+final installed = await repository.isKustomAppInstalled(config.targetPackage);
+
+// WallpaperDownloadButton
+final repository = ref.read(repositoryProvider);
+repository.cancelDownloadWallpaper();
 ```
 
-**Posible mejora:**
-Crear notifiers dedicados para las operaciones:
+Esto rompía la regla del skill `flutter-clean-architect` (los widgets no deben importar `infrastructure`/repository) y duplicaba en cada sitio el mismo patrón de "loading state + try/await + snackbar". Además, varios de esos `ref.watch` ocurrían dentro de `build()`, lo que también violaba el principio "no reconstruir widgets por un side-effect que solo se ejecuta al pulsar".
+
+**Funcionalidad original:**
+- Aplicar wallpaper (setWallpaper / native picker / chooser) con feedback de carga y snackbars.
+- Descargar wallpaper con barra de progreso y cancelación.
+- Mandar widgets a KWGT/KLWP con fallback a la Play Store si la app no está instalada.
+- Lanzar URLs externas (donaciones, términos, privacidad, redes sociales).
+
+**Solución aplicada (siguiendo `flutter-clean-architect` + `flutter-riverpod-expert`):**
+
+La sugerencia original proponía un `ApplyWallpaperNotifier` plano con `AsyncValue<bool>`. La implementación real la reemplaza por un patrón más profesional y más alineado con el resto del proyecto: **cuatro `OperationNotifier` agrupados por dominio funcional**, con estado inmutable tipado, `ref.read` en acciones, `ref.mounted` después de awaits y `try/finally` para garantizar reset de estado.
+
+1. **`WallpaperOperationsNotifier`** (Notifier<bool>) — centraliza las 3 operaciones de la pantalla de preview. Reemplaza a `SetWallpaperNotifier` preservando la API booleana (los widgets siguen usando `ref.watch(wallpaperOperationsProvider)` para deshabilitarse mutuamente):
 
 ```dart
-// Provider de operación
-class ApplyWallpaperNotifier extends Notifier<AsyncValue<bool>> {
+class WallpaperOperationsNotifier extends Notifier<bool> {
   @override
-  AsyncValue<bool> build() => const AsyncData(false);
+  bool build() => false;
 
-  Future<void> apply(String url, int location) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final repo = ref.read(repositoryProvider);
-      return await repo.setWallpaper(url, location);
-    });
+  Future<bool> applyToLocation(WallpaperEntity wallpaper, int location) async {
+    state = true;
+    try {
+      final repository = ref.read(repositoryProvider);
+      final result = await repository.setWallpaper(wallpaper.url, location);
+      if (!ref.mounted) return result;
+      return result;
+    } finally {
+      if (ref.mounted) state = false;
+    }
+  }
+
+  Future<bool> openInNativePicker(WallpaperEntity wallpaper) async {
+    state = true;
+    try {
+      final repository = ref.read(repositoryProvider);
+      final result = await repository.openNativeWallpaperPicker(wallpaper.url);
+      if (!ref.mounted) return result;
+      return result;
+    } finally {
+      if (ref.mounted) state = false;
+    }
+  }
+
+  Future<bool> openInChooser(WallpaperEntity wallpaper) async {
+    state = true;
+    try {
+      final repository = ref.read(repositoryProvider);
+      final result = await repository.openWallpaperChooser(wallpaper.url);
+      if (!ref.mounted) return result;
+      return result;
+    } finally {
+      if (ref.mounted) state = false;
+    }
   }
 }
-
-// En el widget:
-onPressed: () => ref.read(applyWallpaperProvider.notifier).apply(url, location);
 ```
 
-**Relaciones:**
-- `setWallpaperProvider` — ya existe como boolean simple, podría reutilizarse o extenderse
-- `RepositoryImpl` — no cambia
-- Las pantallas consumidoras — usan el notifier en lugar del repositorio directo
+2. **`DownloadOperationsNotifier`** (Notifier<double?>) — reemplaza a `ProgressDownloaderNotifier`, conserva la API de progreso (incluidos los getters `isDownloading` / `isIndeterminate`) y le suma las operaciones de descarga:
+
+```dart
+class DownloadOperationsNotifier extends Notifier<double?> {
+  @override
+  double? build() => null;
+
+  void changeProgress(double? progress) => state = progress;
+  bool get isDownloading => state != null;
+  bool get isIndeterminate => state != null && state! < 0;
+
+  Future<bool> download(WallpaperEntity wallpaper) async {
+    final repository = ref.read(repositoryProvider);
+    changeProgress(-1.0);
+    try {
+      final success = await repository.downloadWallpaper(
+        wallpaper.url.trim(),
+        wallpaper.name,
+        onProgressUpdate: (progress) {
+          if (progress == null) {
+            if (!isIndeterminate) changeProgress(-1.0);
+          } else {
+            changeProgress(progress);
+          }
+        },
+      );
+      changeProgress(null);
+      return success;
+    } catch (_) {
+      changeProgress(null);
+      return false;
+    }
+  }
+
+  void cancel() {
+    final repository = ref.read(repositoryProvider);
+    repository.cancelDownloadWallpaper();
+    changeProgress(null);
+  }
+}
+```
+
+3. **`KustomOperationsNotifier`** (Notifier<KustomOperationState>) — centraliza la consulta `isKustomAppInstalled` y el envío de widgets. Estado inmutable tipado (`isLoading`, `lastResult`) siguiendo la regla de "DO: Use immutable entities with copyWith":
+
+```dart
+class KustomOperationState {
+  final bool isLoading;
+  final bool? lastResult;
+  const KustomOperationState({this.isLoading = false, this.lastResult});
+  KustomOperationState copyWith({bool? isLoading, bool? lastResult}) => ...;
+}
+
+class KustomOperationsNotifier extends Notifier<KustomOperationState> {
+  @override
+  KustomOperationState build() => const KustomOperationState();
+
+  Future<bool> isKustomAppInstalled(String packageName) async {
+    final repository = ref.read(repositoryProvider);
+    return repository.isKustomAppInstalled(packageName);
+  }
+
+  Future<bool> sendWidgetToKustomApp({
+    required String packageName,
+    required String editorActivity,
+    required String assetPath,
+  }) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      final repository = ref.read(repositoryProvider);
+      final result = await repository.sendWidgetToKustomApp(
+        packageName: packageName,
+        editorActivity: editorActivity,
+        assetPath: assetPath,
+      );
+      if (!ref.mounted) return result;
+      state = state.copyWith(isLoading: false, lastResult: result);
+      return result;
+    } catch (_) {
+      if (!ref.mounted) return false;
+      state = state.copyWith(isLoading: false, lastResult: false);
+      return false;
+    }
+  }
+}
+```
+
+4. **`ExternalNavigationNotifier`** (Notifier<ExternalNavigationState>) — la única operación que estaba duplicada 8 veces (settings × 3, donation banner, dashboard × 3, package × 3) se unifica en un único punto de entrada. Mantiene `try/finally` con `ref.mounted` para que el flag `isLaunching` se resetee incluso cuando la plataforma rechaza la URL:
+
+```dart
+class ExternalNavigationState {
+  final bool isLaunching;
+  const ExternalNavigationState({this.isLaunching = false});
+  ExternalNavigationState copyWith({bool? isLaunching}) => ...;
+}
+
+class ExternalNavigationNotifier extends Notifier<ExternalNavigationState> {
+  @override
+  ExternalNavigationState build() => const ExternalNavigationState();
+
+  Future<void> launchExternalApp(String url) async {
+    state = state.copyWith(isLaunching: true);
+    try {
+      final repository = ref.read(repositoryProvider);
+      await repository.launchExternalApp(url);
+    } finally {
+      if (ref.mounted) state = state.copyWith(isLaunching: false);
+    }
+  }
+}
+```
+
+5. **Widgets refactorizados a consumir notifiers** — la pantalla de preview pasa de:
+
+```dart
+void _applyWallpaper(BuildContext context, WidgetRef ref) async {
+  final repository = ref.read(repositoryProvider);
+  final appRouter = ref.read(appRouterProvider);
+  final colors = Theme.of(context).colorScheme;
+  ref.read(setWallpaperProvider.notifier).changeState();
+  final result = await repository.setWallpaper(wallpaperEntity.url, screenLocation);
+  if (context.mounted) {
+    ref.read(setWallpaperProvider.notifier).changeState();
+    if (result) { /* snackbar ok */ } else { /* snackbar error */ }
+    appRouter.pop();
+  }
+}
+```
+
+a:
+
+```dart
+Future<void> _applyWallpaper(BuildContext context, WidgetRef ref) async {
+  final appRouter = ref.read(appRouterProvider);
+  final colors = Theme.of(context).colorScheme;
+  final result = await ref
+      .read(wallpaperOperationsProvider.notifier)
+      .applyToLocation(wallpaperEntity, screenLocation);
+  if (context.mounted) {
+    if (result) { /* snackbar ok */ } else { /* snackbar error */ }
+    appRouter.pop();
+  }
+}
+```
+
+6. **`KustomWidgetsScreen` simplificado** — el callback `onTap` de la grid, que antes era un bloque async inline con `final repository = ref.watch(repositoryProvider);` y `await repository.isKustomAppInstalled(...)`, se extrae a un método `_handleWidgetTap` que despacha al notifier correspondiente:
+
+```dart
+Future<void> _handleWidgetTap(BuildContext context, WidgetRef ref, String assetPath) async {
+  final kustomOps = ref.read(kustomOperationsProvider.notifier);
+  final navOps = ref.read(externalNavigationProvider.notifier);
+  final installed = await kustomOps.isKustomAppInstalled(config.targetPackage);
+  if (!context.mounted) return;
+  if (installed) {
+    await kustomOps.sendWidgetToKustomApp(
+      packageName: config.targetPackage,
+      editorActivity: config.editorActivity,
+      assetPath: assetPath,
+    );
+  } else {
+    await navOps.launchExternalApp(config.externalLink);
+  }
+}
+```
+
+7. **Cobertura de tests** — `test/presentation/operations_notifiers_test.dart` añade 10 tests nuevos usando un `FakeRepository` que registra las llamadas recibidas, de modo que cada notifier se valida de forma aislada:
+   - `WallpaperOperationsNotifier`: forwarding de `applyToLocation`, `openInNativePicker`, `openInChooser` y toggle del estado de loading.
+   - `DownloadOperationsNotifier`: progress, reset a idle, cancel, `isIndeterminate`.
+   - `KustomOperationsNotifier`: `isKustomAppInstalled` no muta estado, `sendWidgetToKustomApp` propaga resultado y actualiza `lastResult`.
+   - `ExternalNavigationNotifier`: forwarding + reset en éxito y en error (la excepción del repository se sigue propagando intacta para que las llamadas a `SnackbarHelpers.showError` ya existentes en `AboutPackageAppScreen` sigan funcionando).
+   - Invariante de capas: el `repositoryProvider` solo se obtiene desde el override del test, no desde widgets.
+
+**Mejoras colaterales incluidas:**
+- **Contrato `Repository` intacto**: la API del repositorio no cambia, no hace falta tocar `datasource_impl.dart` ni `repository_impl.dart`.
+- **API pública preservada en lo visible**: los nombres `wallpaperOperationsProvider`, `downloadOperationsProvider` siguen siendo legibles y descubribles desde `providers.dart`; los widgets que antes dependían de `setWallpaperProvider` y `progressDownloaderProvider` ahora se referencian a sus reemplazos con la misma forma `ref.watch(...)` / `ref.read(...notifier)`.
+- **Estilo uniforme**: los cuatro notifiers comparten el mismo patrón (`state = ...` antes del await, `try/finally` con `ref.mounted` para reset, `ref.read` para el repository, error logging vía `debugPrint` o absorción a `false` consistente con el comportamiento histórico del datasource).
+- **Proliferación evitada**: en lugar de un `ApplyWallpaperNotifier` + un `OpenNativePickerNotifier` + un `OpenChooserNotifier` + un `IsKustomAppInstalledNotifier` + un `SendWidgetNotifier` + un `LaunchExternalNotifier` (6 notifiers planos), se obtienen 4 notifiers cohesivos. La creación de un notifier por cada combinación de método+estado se sustituye por la agrupación por dominio funcional (siguiendo el principio de "split providers by concern when needed").
+- **Mejora de cobertura**: los tests añadidos también cubren el escenario de error (el `FakeRepository` puede configurarse para devolver `false` o lanzar) lo que antes era implícito en cada widget.
+
+**Resultado:**
+- Los widgets de presentación ya no importan `repositoryProvider`; la única vía de acceso al repositorio desde la capa de presentación son los cuatro `OperationNotifier`.
+- `flutter analyze` y `flutter test` (25/25) pasan sin issues.
+- No se rompe la funcionalidad existente: aplicar wallpaper, descargar wallpapers, mandar widgets a Kustom y abrir URLs externas siguen comportándose igual que antes (mismo loading, mismos snackbars, mismo flujo de pop/redirect).
+- Los archivos `set_wallpaper_provider.dart` y `progress_downloader_provider.dart` se eliminan, manteniendo el barrel `providers.dart` ordenado alfabéticamente.
 
 ---
 
@@ -1200,11 +1431,14 @@ Future<void> setPreferenceForThemeMode(ThemeMode themeMode) async {
 
 | Archivo | Problema original | Fix |
 |---------|-------------------|-----|
-| `lib/presentation/screens/tertiary/wallpaper_preview_screen.dart` | Imagen completa en memoria, `ref.watch` en acciones | 4.2, 7.2 |
+| `lib/presentation/screens/tertiary/wallpaper_preview_screen.dart` | Imagen completa en memoria, `ref.watch` en acciones, acceso directo a repository | 4.2, 6.1, 7.2 |
 | `lib/shared/utils/color_palette_extractor.dart` | `ui.Image` sin dispose | 4.3 |
 | `lib/presentation/providers/permissions_provider.dart` | Async sin await en `build()`, falta de `ref.mounted` | 3.3, 3.4 |
-| `lib/presentation/screens/secondary/kustom_widgets_screen.dart` | Acceso directo a repository | 6.1 (pendiente refactor mayor) |
-| `lib/presentation/screens/secondary/settings_screen.dart` | `UniqueKey()` en `Dismissible` | 4.5 (marcado intencional) |
+| `lib/presentation/screens/secondary/kustom_widgets_screen.dart` | Acceso directo a repository | 6.1 |
+| `lib/presentation/screens/secondary/settings_screen.dart` | `UniqueKey()` en `Dismissible`, acceso directo a repository | 4.5 (marcado intencional), 6.1 |
+| `lib/presentation/screens/tertiary/about_dashboard_screen.dart` | Acceso directo a repository | 6.1 |
+| `lib/presentation/screens/tertiary/about_package_app_screen.dart` | Acceso directo a repository | 6.1 |
+| `lib/presentation/widgets/buttons/wallpaper_download_button.dart` | Acceso directo a repository, `progressDownloaderProvider` mixed con repository | 6.1 |
 
 ### Archivos medios
 
