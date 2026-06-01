@@ -7,7 +7,7 @@
 >
 > Fecha: 2026-05-30
 >
-> Última actualización: 2026-05-31 — Fix 2.1 (TabBarEntity) aplicado.
+> Última actualización: 2026-06-01 — Estado de implementación actualizado con todos los fixes commiteados.
 
 ---
 
@@ -41,6 +41,9 @@
 | 3.1 Race condition AppValuesPreferencesNotifier | ✅ RESUELTO | `11cf168` |
 | 3.2 Efecto secundario InAppUpdateNotifier | ✅ RESUELTO | `2cc506a` |
 | 3.3 Async no await PermissionsNotifier | ✅ RESUELTO | `f7e5b2a` |
+| 3.4 Falta de ref.mounted post-async | ✅ RESUELTO | `2cc506a` |
+| 3.5 KeyValueStorageServicesImpl sin DI | ❌ PENDIENTE | — |
+| 3.6 ref.watch en métodos de acción | ✅ RESUELTO | `a53bc82` |
 | 4.1 getListOfWidgets caching | ✅ RESUELTO | `4fb6553` |
 | 4.2 WallpaperPreviewScreen memoria | ✅ RESUELTO | `4eee4b2` |
 | 4.3 ColorPaletteExtractor dispose | ✅ RESUELTO | `93b3fdd` |
@@ -51,11 +54,12 @@
 | 5.3 keepAlive providers | ✅ CORRECTO | — |
 | 6.1 Acceso directo repository | ⏭️ PENDIENTE | refactor grande |
 | 6.2 Environment responsabilidades | ⏭️ OMITIDO | mantenibilidad |
+| 7.1 _activeCancelToken pérdida de referencia | ❌ PENDIENTE | — |
 | 7.2 ref.watch en acciones | ✅ RESUELTO | `a53bc82` |
 | 7.3 firstWhere sin orElse | ✅ RESUELTO | `4fb6553` |
 | 7.4 MyApp efecto secundario | ⏭️ OMITIDO | bajo impacto |
 | 7.5 setKeyValue sin await | ✅ RESUELTO | `11cf168` |
-| 2.1 TabBarEntity Widget | ✅ RESUELTO | — |
+| 2.1 TabBarEntity Widget | ✅ RESUELTO | `c58ebfa` |
 | 2.3 NetworkFailure sin usar | ⏭️ OMITIDO | UX |
 
 ---
@@ -338,7 +342,7 @@ O migrar a `AsyncNotifier` con estado inicial correcto.
 
 ---
 
-### 3.4 🟠 Falta de `ref.mounted` después de operaciones async
+### 3.4 🟠 Falta de \`ref.mounted\` después de operaciones async ✅ RESUELTO
 
 **Archivos afectados:**
 - `lib/presentation/providers/in_app_update_provider.dart`
@@ -379,7 +383,7 @@ Future<void> checkAppForUpdates() async {
 
 ---
 
-### 3.5 🟡 `KeyValueStorageServicesImpl` instanciado directamente
+### 3.5 🟡 \`KeyValueStorageServicesImpl\` instanciado directamente ❌ PENDIENTE
 
 **Archivo:** `lib/presentation/providers/app_values_preferences_provider.dart`
 
@@ -421,7 +425,7 @@ class AppValuesPreferencesNotifier extends Notifier<AppValuesPreferencesState> {
 
 ---
 
-### 3.6 🟡 `ref.watch()` en métodos de acción
+### 3.6 🟡 \`ref.watch()\` en métodos de acción ✅ RESUELTO
 
 **Archivos afectados:**
 - `lib/presentation/screens/tertiary/wallpaper_preview_screen.dart` — `_LocationButton`, `_WallpaperChooserButton`, `_NativePickerButton`
@@ -894,7 +898,7 @@ lib/config/constants/
 
 ## 7. Bugs y errores potenciales
 
-### 7.1 🔴 `DataSourceImpl._activeCancelToken` — pérdida de referencia
+### 7.1 🔴 \`DataSourceImpl._activeCancelToken\` — pérdida de referencia ❌ PENDIENTE
 
 **Archivo:** `lib/infrastructure/datasources/datasource_impl.dart`
 

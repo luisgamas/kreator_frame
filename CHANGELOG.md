@@ -6,8 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **Race condition in `AppValuesPreferencesNotifier`**: Migrated to `AsyncNotifier` so `SharedPreferences` are read before returning any state. Eliminates the theme-flash on app start where the default theme appeared for one frame before the saved preference loaded.
+- **Side effect in `InAppUpdateNotifier.build()`**: Removed the `Future.microtask(() => checkAppForUpdates())` call from `build()` and replaced it with explicit invocation via `ref.read()`. Added `ref.mounted` guards after every `await` in `InAppUpdateNotifier` to prevent `setState()` errors when the widget is disposed during an async operation.
+- **Race condition in `PermissionsNotifier`**: Migrated to `AsyncNotifier` to ensure `_init()` completes before returning the permission state. Eliminates the flash of a "denied" permission button on Android 10+ where storage permissions are granted by default.
+- **Memory leak in `getListOfWidgets()`**: Added an in-memory cache keyed by file extension so repeated calls do not re-parse all ZIP archives from `AssetManifest`. The `Archive` objects are now properly handled, avoiding `Uint8List` retention across calls.
+- **Missing `orElse` in `firstWhere()`**: Replaced `archive.firstWhere(...)` with `firstWhereOrNull` to prevent `StateError` when a ZIP archive does not contain the expected thumbnail file.
+- **`ui.Image` GPU memory leak in `ColorPaletteExtractor`**: Added explicit `.dispose()` calls on `image` and `resizedImage` via `try`/`finally` blocks, ensuring GPU memory is freed immediately after color extraction.
+- **Wallpaper preview full-resolution memory usage**: Limited `CachedNetworkImage` with `memCacheWidth` to cap decoded image size. Changed `InteractiveViewer` to `constrained: true` to prevent loading the full image into memory when zoomed out.
+- **`ref.watch` used in action methods**: Replaced all `ref.watch()` calls with `ref.read()` inside button callbacks (`_applyWallpaper`, `_openChooser`, `_openNativePicker`) in `WallpaperPreviewScreen` to follow Riverpod best practices.
+- **`setKeyValue` fire-and-forget**: Migrating to `AsyncNotifier` ensures preference persistence (SharedPreferences write) completes before the local state is updated, preventing state/persistence desync.
+
 ### Changed
 - Refactored `TabBarEntity` to a pure domain data entity (type + label) without any Flutter UI types. The `TabsBarAppNotifier` no longer builds widgets; the presentation layer (`HomeScreen`) maps each `TabBarEntity` to its concrete widget via a `switch` on a new `TabBarType` enum. `CustomSliverAppBar` now receives a `List<Tab>` parameter instead of reading the provider itself. Resolves the Clean Architecture violation tracked in `analisis.md` (section 2.1).
+- Applied `const` constructors across multiple widget files to reduce rebuild overhead.
+
+### Performance
+- **SharedPreferences instance caching**: `KeyValueStorageServicesImpl` now caches the `SharedPreferences` singleton via a lazy `_instance` getter with null-coalescing assignment, eliminating redundant `getInstance()` async calls on every read/write operation.
+- **AsyncNotifier migration for race conditions**: `AppValuesPreferencesNotifier`, `InAppUpdateNotifier`, and `PermissionsNotifier` migrated to `AsyncNotifier` pattern, eliminating the "default state flash" at startup and ensuring state consistency.
 
 ---
 
