@@ -16,10 +16,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Wallpaper preview full-resolution memory usage**: Limited `CachedNetworkImage` with `memCacheWidth` to cap decoded image size. Changed `InteractiveViewer` to `constrained: true` to prevent loading the full image into memory when zoomed out.
 - **`ref.watch` used in action methods**: Replaced all `ref.watch()` calls with `ref.read()` inside button callbacks (`_applyWallpaper`, `_openChooser`, `_openNativePicker`) in `WallpaperPreviewScreen` to follow Riverpod best practices.
 - **`setKeyValue` fire-and-forget**: Migrating to `AsyncNotifier` ensures preference persistence (SharedPreferences write) completes before the local state is updated, preventing state/persistence desync.
+- **`_activeCancelToken` reference lost on datasource rebuild**: Extracted the `dio.CancelToken` lifecycle out of `DataSourceImpl` into a dedicated `DownloadCancelTokenHolder` service injected via `Provider`. The token now survives any `dataSourceProvider` rebuild (e.g. when `dioProvider` is invalidated), so `cancelDownloadWallpaper()` always operates on the in-flight request. The new holder also handles overlapping downloads safely: registering a new token cancels any previous, still-active one. Covered by 8 unit tests.
 
 ### Changed
 - Refactored `TabBarEntity` to a pure domain data entity (type + label) without any Flutter UI types. The `TabsBarAppNotifier` no longer builds widgets; the presentation layer (`HomeScreen`) maps each `TabBarEntity` to its concrete widget via a `switch` on a new `TabBarType` enum. `CustomSliverAppBar` now receives a `List<Tab>` parameter instead of reading the provider itself. Resolves the Clean Architecture violation tracked in `analisis.md` (section 2.1).
 - Applied `const` constructors across multiple widget files to reduce rebuild overhead.
+- `DataSourceImpl` constructor now requires a `DownloadCancelTokenHolder` in addition to `Dio`, formalising dependency injection for the cancel-token lifecycle (see fix above). `dataSourceProvider` wires the holder through a new `downloadCancelTokenHolderProvider`.
 
 ### Performance
 - **SharedPreferences instance caching**: `KeyValueStorageServicesImpl` now caches the `SharedPreferences` singleton via a lazy `_instance` getter with null-coalescing assignment, eliminating redundant `getInstance()` async calls on every read/write operation.

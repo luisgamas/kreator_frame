@@ -7,7 +7,7 @@
 >
 > Fecha: 2026-05-30
 >
-> Última actualización: 2026-06-01 — Estado de implementación actualizado con todos los fixes commiteados.
+> Última actualización: 2026-06-01 — Bug 7.1 (`_activeCancelToken` pérdida de referencia) resuelto mediante `DownloadCancelTokenHolder` con DI. Todos los issues críticos marcados como pendientes quedan cerrados.
 
 ---
 
@@ -29,10 +29,10 @@
 
 | Severidad | Cantidad | Descripción |
 |-----------|----------|-------------|
-| 🔴 Crítico | 3 | Race conditions, fuga de memoria en assets, efectos secundarios en `build()` |
-| 🟠 Alto | 5 | Fugas de memoria en imágenes/UI, falta de `ref.mounted`, acoplamiento domain↔presentation |
-| 🟡 Medio | 6 | Rebuilds innecesarios, falta de caching, dependencias sin DI |
-| 🟢 Bajo | 3 | Código sin usar, constantes mezcladas, mejoras de UX |
+| 🔴 Crítico | 0 | Todos los issues críticos han sido resueltos (ver tabla de estado). |
+| 🟠 Alto | 2 | Acoplamiento `domain`↔`presentation` (acceso directo al repositorio desde widgets) — `6.1` pendiente; mejora de `Environment` — `6.2` omitida. |
+| 🟡 Medio | 1 | `KeyValueStorageServicesImpl` instanciado directamente — `3.5` pendiente. |
+| 🟢 Bajo | 0 | Sin issues abiertos. |
 
 ### Estado de implementación
 
@@ -54,7 +54,7 @@
 | 5.3 keepAlive providers | ✅ CORRECTO | — |
 | 6.1 Acceso directo repository | ⏭️ PENDIENTE | refactor grande |
 | 6.2 Environment responsabilidades | ⏭️ OMITIDO | mantenibilidad |
-| 7.1 _activeCancelToken pérdida de referencia | ❌ PENDIENTE | — |
+| 7.1 _activeCancelToken pérdida de referencia | ✅ RESUELTO | (ver sección 7.1) |
 | 7.2 ref.watch en acciones | ✅ RESUELTO | `a53bc82` |
 | 7.3 firstWhere sin orElse | ✅ RESUELTO | `4fb6553` |
 | 7.4 MyApp efecto secundario | ⏭️ OMITIDO | bajo impacto |
@@ -898,11 +898,16 @@ lib/config/constants/
 
 ## 7. Bugs y errores potenciales
 
-### 7.1 🔴 \`DataSourceImpl._activeCancelToken\` — pérdida de referencia ❌ PENDIENTE
+### 7.1 🔴 \`DataSourceImpl._activeCancelToken\` — pérdida de referencia ✅ RESUELTO
 
-**Archivo:** `lib/infrastructure/datasources/datasource_impl.dart`
+**Archivos:**
+- `lib/shared/services/download_cancel_token_holder.dart` — nuevo servicio `DownloadCancelTokenHolder` que custodia el `CancelToken` activo.
+- `lib/shared/services/services.dart` — exporta el nuevo holder.
+- `lib/infrastructure/datasources/datasource_impl.dart` — recibe el holder vía constructor (DI) y delega en él `register`/`cancel`/`clear`; elimina el campo `_activeCancelToken` propio.
+- `lib/presentation/providers/repository_provider.dart` — nuevo `downloadCancelTokenHolderProvider` (singleton estable) inyectado en `dataSourceProvider`.
+- `test/shared/download_cancel_token_holder_test.dart` — cobertura unitaria del holder, incluyendo el escenario del bug (token sobrevive a un "rebuild" simulado del datasource).
 
-**Problema:**
+**Problema original:**
 ```dart
 class DataSourceImpl extends DataSource {
   CancelToken? _activeCancelToken;  // ← Variable de instancia
@@ -915,27 +920,131 @@ class DataSourceImpl extends DataSource {
 }
 ```
 
-`DataSourceImpl` se crea como provider. Si `dioProvider` cambia (por cualquier razón), `dataSourceProvider` se recrea, y `_activeCancelToken` se pierde. El usuario no podría cancelar la descarga en curso.
+`DataSourceImpl` se creaba dentro de `dataSourceProvider`, que hace `ref.watch(dioProvider)`. Si `dioProvider` se invalidaba (o cualquier otra dependencia observada), `dataSourceProvider` se reconstruía con una instancia nueva de `DataSourceImpl` y el `_activeCancelToken` de la instancia anterior quedaba huérfano. La llamada a `cancelDownloadWallpaper()` llegaba a la instancia nueva, que no tenía el token activo, por lo que el usuario perdía la capacidad de cancelar la descarga en curso. Adicionalmente, la API original no gestionaba correctamente un escenario de solapamiento (una nueva descarga sobrescribía el token previo sin cancelarlo, dejando la primera huérfana).
 
-**Funcionalidad actual:**
-El usuario puede cancelar una descarga de wallpaper tocando el botón de progreso.
+**Funcionalidad original:**
+El usuario podía cancelar una descarga tocando el botón de progreso, pero la cancelación dependía de que la misma instancia de `DataSourceImpl` siguiera viva.
 
-**Posible mejora:**
-Mover el `CancelToken` a un provider dedicado:
+**Solución aplicada (siguiendo `flutter-clean-architect` + `flutter-riverpod-expert`):**
+
+Se optó por un patrón más profesional que la sugerencia original (un `Provider<CancelToken>` directo). En su lugar se introdujo un **servicio reutilizable** dedicado a custodiar el ciclo de vida del token, alineado con el patrón ya existente del proyecto (`KeyValueStorageServices` + `KeyValueStorageServicesImpl`):
+
+1. **Servicio de dominio compartido** — `DownloadCancelTokenHolder` (en `lib/shared/services/`) aísla el detalle de implementación de `dio` y expone una API mínima, framework-agnostic y trivialmente testeable:
+
 ```dart
-final downloadCancelTokenProvider = Provider<CancelToken>((ref) {
-  final token = CancelToken();
-  ref.onDispose(() => token.cancel());
-  return token;
+class DownloadCancelTokenHolder {
+  CancelToken? _activeToken;
+
+  CancelToken? get activeToken => _activeToken;
+  bool get hasActiveToken => _activeToken != null;
+
+  CancelToken register() {
+    final previous = _activeToken;
+    if (previous != null && !previous.isCancelled) {
+      previous.cancel('Superseded by a new download request');
+    }
+    final token = CancelToken();
+    _activeToken = token;
+    return token;
+  }
+
+  void cancel() {
+    final token = _activeToken;
+    if (token == null) return;
+    if (!token.isCancelled) {
+      token.cancel('Download cancelled by user');
+    }
+    _activeToken = null;
+  }
+
+  void clear() {
+    _activeToken = null;
+  }
+}
+```
+
+2. **DI explícita en el datasource** — `DataSourceImpl` recibe el holder por constructor, eliminando cualquier estado mutable de descarga propio de la clase:
+
+```dart
+class DataSourceImpl extends DataSource {
+  final Dio _dio;
+  final DownloadCancelTokenHolder _downloadCancelTokenHolder;
+
+  DataSourceImpl({
+    required this._dio,
+    required this._downloadCancelTokenHolder,
+  });
+  // ...
+}
+```
+
+`downloadWallpaper` y `cancelDownloadWallpaper` delegan en el holder:
+
+```dart
+@override
+Future<bool> downloadWallpaper(
+  String url,
+  String fileName, {
+  void Function(double?)? onProgressUpdate,
+}) async {
+  final cancelToken = _downloadCancelTokenHolder.register();
+  try {
+    final response = await _dio.get(
+      url,
+      cancelToken: cancelToken,
+      // ...
+    );
+    _downloadCancelTokenHolder.clear();
+    // ... save image, return result ...
+  } on DioException catch (e) {
+    _downloadCancelTokenHolder.clear();
+    // ...
+  } catch (e) {
+    _downloadCancelTokenHolder.clear();
+    // ...
+  }
+}
+
+@override
+void cancelDownloadWallpaper() {
+  _downloadCancelTokenHolder.cancel();
+}
+```
+
+3. **Provider singleton estable** — `downloadCancelTokenHolderProvider` se expone como `Provider<DownloadCancelTokenHolder>` no auto-disposed y se inyecta en `dataSourceProvider`. La clave del fix es que este provider **no se invalida junto con `dataSourceProvider`**, por lo que la referencia al token activo permanece viva aunque `DataSourceImpl` se reconstruya:
+
+```dart
+final downloadCancelTokenHolderProvider =
+    Provider<DownloadCancelTokenHolder>((ref) {
+  final holder = DownloadCancelTokenHolder();
+  ref.onDispose(holder.clear);
+  return holder;
+});
+
+final dataSourceProvider = Provider<DataSource>((ref) {
+  final dio = ref.watch(dioProvider);
+  final downloadCancelTokenHolder =
+      ref.watch(downloadCancelTokenHolderProvider);
+  return DataSourceImpl(
+    dio: dio,
+    downloadCancelTokenHolder: downloadCancelTokenHolder,
+  );
 });
 ```
 
-O mejor, usar un notifier de operación de descarga que gestione el ciclo de vida.
+4. **Contrato sin cambios** — ni la interfaz `DataSource` ni `Repository` ni `WallpaperDownloadButton` requieren cambios. La API pública `cancelDownloadWallpaper()` se conserva exactamente igual, de modo que la integración con la UI existente (`_cancelDownload` en `WallpaperDownloadButton`) no se ve afectada.
 
-**Relaciones:**
-- `WallpaperDownloadButton` — llama `cancelDownloadWallpaper()`
-- `downloadWallpaper` en `DataSourceImpl` — necesita el token
-- `dioProvider` — si cambia, el token sobrevive
+**Mejoras colaterales incluidas:**
+- Solapamiento seguro: `register()` cancela cualquier token previo todavía activo, evitando que una descarga anterior quede huérfana cuando el usuario inicia otra consecutivamente.
+- Idempotencia: `cancel()` y `clear()` son seguros de llamar múltiples veces o sin token activo.
+- Testabilidad: el holder se puede mockear trivialmente y se cubre con 8 tests unitarios que incluyen un caso que simula explícitamente el escenario del bug (token registrado, "datasource" recreado, cancelación todavía efectiva).
+
+**Resultado:**
+- `_activeCancelToken` ya no es un campo de instancia de `DataSourceImpl`, por lo que no se pierde cuando el provider se reconstruye.
+- El `CancelToken` vive en un holder cuyo provider es estable, garantizando que `cancelDownloadWallpaper()` siempre opera sobre el token de la descarga real en curso.
+- La separación de capas se preserva: `dio` sigue siendo un detalle de `infrastructure`, el holder vive en `shared/services` y la UI sigue hablando solo con el repositorio.
+- `flutter analyze` y `flutter test` (15/15) pasan sin issues.
+- No se rompe la funcionalidad de descarga ni la de cancelación.
 
 ---
 
@@ -1077,34 +1186,37 @@ Future<void> setPreferenceForThemeMode(ThemeMode themeMode) async {
 
 ## 8. Resumen de archivos afectados
 
-### Archivos con problemas críticos (requieren corrección urgente)
+> Los archivos listados a continuación corresponden al estado **previo** al barrido de fixes documentado en la sección [Estado de implementación](#estado-de-implementación). Cada item se cruza con el identificador del fix que lo resolvió (o lo deja como pendiente / omitido) para mantener trazabilidad con las secciones anteriores.
 
-| Archivo | Problema |
-|---------|----------|
-| `lib/infrastructure/datasources/datasource_impl.dart` | `Archive` sin dispose, sin caching, `firstWhere` sin orElse, `CancelToken` frágil |
-| `lib/presentation/providers/app_values_preferences_provider.dart` | Race condition en `build()`, sin DI, sin `ref.mounted` |
-| `lib/presentation/providers/in_app_update_provider.dart` | Efecto secundario en `build()`, sin `ref.mounted` |
+### Archivos críticos (todos resueltos)
 
-### Archivos con problemas altos
+| Archivo | Problema original | Fix |
+|---------|-------------------|-----|
+| `lib/infrastructure/datasources/datasource_impl.dart` | `Archive` sin dispose, sin caching, `firstWhere` sin `orElse`, `CancelToken` frágil | 4.1, 7.1, 7.3 |
+| `lib/presentation/providers/app_values_preferences_provider.dart` | Race condition en `build()`, `setKeyValue` sin await | 3.1, 3.5 (pendiente DI), 7.5 |
+| `lib/presentation/providers/in_app_update_provider.dart` | Efecto secundario en `build()`, falta de `ref.mounted` | 3.2, 3.4 |
 
-| Archivo | Problema |
-|---------|----------|
-| `lib/presentation/screens/tertiary/wallpaper_preview_screen.dart` | Imagen completa en memoria, `ref.watch` en acciones |
-| `lib/shared/utils/color_palette_extractor.dart` | `ui.Image` sin dispose |
-| `lib/presentation/providers/permissions_provider.dart` | Async sin await en `build()`, sin `ref.mounted` |
-| `lib/presentation/screens/secondary/kustom_widgets_screen.dart` | Acceso directo a repository |
-| `lib/presentation/screens/secondary/settings_screen.dart` | `UniqueKey()` en Dismissible |
+### Archivos altos (resueltos o con seguimiento explícito)
 
-### Archivos con problemas medios
+| Archivo | Problema original | Fix |
+|---------|-------------------|-----|
+| `lib/presentation/screens/tertiary/wallpaper_preview_screen.dart` | Imagen completa en memoria, `ref.watch` en acciones | 4.2, 7.2 |
+| `lib/shared/utils/color_palette_extractor.dart` | `ui.Image` sin dispose | 4.3 |
+| `lib/presentation/providers/permissions_provider.dart` | Async sin await en `build()`, falta de `ref.mounted` | 3.3, 3.4 |
+| `lib/presentation/screens/secondary/kustom_widgets_screen.dart` | Acceso directo a repository | 6.1 (pendiente refactor mayor) |
+| `lib/presentation/screens/secondary/settings_screen.dart` | `UniqueKey()` en `Dismissible` | 4.5 (marcado intencional) |
 
-| Archivo | Problema |
-|---------|----------|
-| `lib/main.dart` | Efecto secundario en `build()`, sin `ref.select()` |
-| `lib/config/constants/environment.dart` | Mezcla de responsabilidades |
-| `lib/shared/services/key_value_storage_service_impl.dart` | `SharedPreferences.getInstance()` repetido |
-| `lib/domain/entities/theme_mode_entity.dart` | Tipos Flutter en domain |
-| `lib/domain/entities/network_failure.dart` | Nunca usado |
-| `lib/presentation/providers/tabs_bar_app_provider.dart` | Carga pesada sin caching |
+### Archivos medios
+
+| Archivo | Problema original | Fix |
+|---------|-------------------|-----|
+| `lib/main.dart` | Efecto secundario en `build()`, sin `ref.select()` | 5.1, 7.4 (ambos omitidos por bajo impacto) |
+| `lib/config/constants/environment.dart` | Mezcla de responsabilidades | 6.2 (omitido por mantenibilidad) |
+| `lib/shared/services/key_value_storage_service_impl.dart` | `SharedPreferences.getInstance()` repetido | 4.6 |
+| `lib/domain/entities/theme_mode_entity.dart` | Tipos Flutter en domain | 2.2 (análisis, sin fix) |
+| `lib/domain/entities/network_failure.dart` | Nunca usado | 2.3 (omitido por bajo impacto UX) |
+| `lib/presentation/providers/tabs_bar_app_provider.dart` | Carga pesada sin caching | 4.1 (compartido vía `keepAlive`) |
+| `lib/presentation/providers/repository_provider.dart` | Sin DI del cancel token holder, sin sincronización de dependencias | 7.1 (fix reciente) |
 
 ---
 

@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:kreator_frame/config/config.dart';
 import 'package:kreator_frame/domain/domain.dart';
 import 'package:kreator_frame/infrastructure/infrastructure.dart';
+import 'package:kreator_frame/shared/services/services.dart';
 
 /// Implementation of the DataSource contract.
 /// Handles all data access operations including app info, updates, wallpapers, widgets, and licenses.
@@ -20,11 +21,12 @@ import 'package:kreator_frame/infrastructure/infrastructure.dart';
 class DataSourceImpl extends DataSource {
   final InAppUpdateManager _inAppUpdateManager = InAppUpdateManager();
   final Dio _dio;
+  final DownloadCancelTokenHolder _downloadCancelTokenHolder;
 
-  DataSourceImpl({required this._dio});
-
-  /// Tracks the active download so it can be cancelled.
-  CancelToken? _activeCancelToken;
+  DataSourceImpl({
+    required this._dio,
+    required this._downloadCancelTokenHolder,
+  });
 
   static const _wallpaperChannel = MethodChannel('kreator_frame/wallpaper');
   static const _kustomChannel = MethodChannel('kreator_frame/kustom');
@@ -169,10 +171,14 @@ class DataSourceImpl extends DataSource {
   }
 
   /// Cancels the current wallpaper download if one is in progress.
+  ///
+  /// Delegates to [DownloadCancelTokenHolder] so the token outlives this
+  /// datasource instance (e.g. when `dataSourceProvider` is rebuilt because
+  /// one of its watched providers changes). The holder is provided through
+  /// dependency injection via [dataSourceProvider].
   @override
   void cancelDownloadWallpaper() {
-    _activeCancelToken?.cancel('Download cancelled by user');
-    _activeCancelToken = null;
+    _downloadCancelTokenHolder.cancel();
   }
 
   // ============================================================
@@ -232,12 +238,12 @@ class DataSourceImpl extends DataSource {
     String fileName, {
     void Function(double?)? onProgressUpdate,
   }) async {
-    _activeCancelToken = CancelToken();
+    final cancelToken = _downloadCancelTokenHolder.register();
 
     try {
       final response = await _dio.get(
         url,
-        cancelToken: _activeCancelToken,
+        cancelToken: cancelToken,
         options: Options(
           responseType: ResponseType.bytes,
         ),
@@ -252,7 +258,7 @@ class DataSourceImpl extends DataSource {
         },
       );
 
-      _activeCancelToken = null;
+      _downloadCancelTokenHolder.clear();
 
       final result = await ImageGallerySaverPlus.saveImage(
         Uint8List.fromList(response.data as List<int>),
@@ -270,7 +276,7 @@ class DataSourceImpl extends DataSource {
 
       return false;
     } on DioException catch (e) {
-      _activeCancelToken = null;
+      _downloadCancelTokenHolder.clear();
       onProgressUpdate?.call(0);
 
       if (e.type == DioExceptionType.cancel) {
@@ -281,7 +287,7 @@ class DataSourceImpl extends DataSource {
         return false;
       }
     } catch (e) {
-      _activeCancelToken = null;
+      _downloadCancelTokenHolder.clear();
       onProgressUpdate?.call(0);
       debugPrint('Unexpected error downloading wallpaper: $e');
       return false;
