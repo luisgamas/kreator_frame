@@ -123,14 +123,14 @@ void main() {
       final container = _containerWith(fake);
       addTearDown(container.dispose);
 
-      expect(container.read(wallpaperOperationsProvider), isFalse);
+      expect(container.read(wallpaperOperationsProvider), WallpaperOperation.none);
 
       final notifier =
           container.read(wallpaperOperationsProvider.notifier);
       final result = await notifier.applyToLocation(_wallpaper, 1);
 
       expect(result, isTrue);
-      expect(container.read(wallpaperOperationsProvider), isFalse);
+      expect(container.read(wallpaperOperationsProvider), WallpaperOperation.none);
       expect(fake.calls, contains('setWallpaper:${_wallpaper.url}:1'));
     });
 

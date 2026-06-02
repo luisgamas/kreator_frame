@@ -346,7 +346,8 @@ class _ApplyWallpaperButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isOperationRunning = ref.watch(wallpaperOperationsProvider);
+    final activeOperation = ref.watch(wallpaperOperationsProvider);
+    final isOperationRunning = activeOperation != WallpaperOperation.none;
     final colors = Theme.of(context).colorScheme;
 
     return CustomIconButton.filled(
@@ -468,7 +469,18 @@ class _LocationButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isOperationRunning = ref.watch(wallpaperOperationsProvider);
+    final activeOperation = ref.watch(wallpaperOperationsProvider);
+    final WallpaperOperation targetOperation;
+    if (screenLocation == 1) {
+      targetOperation = WallpaperOperation.homeScreen;
+    } else if (screenLocation == 2) {
+      targetOperation = WallpaperOperation.lockScreen;
+    } else {
+      targetOperation = WallpaperOperation.bothScreens;
+    }
+
+    final isThisLoading = activeOperation == targetOperation;
+    final isDisabled = activeOperation != WallpaperOperation.none;
     final textStyles = Theme.of(context).textTheme;
 
     return Column(
@@ -476,11 +488,11 @@ class _LocationButton extends ConsumerWidget {
       children: [
         CustomIconButton.tonal(
           buttonSize: 56,
-          onPressed: isOperationRunning
+          onPressed: isDisabled
             ? null
             : () => _applyWallpaper(context, ref),
           icon: icon,
-          isLoading: isOperationRunning,
+          isLoading: isThisLoading,
         ),
         const Gap(AppSpacing.xxxs),
         Text(
@@ -529,14 +541,16 @@ class _WallpaperChooserButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isOperationRunning = ref.watch(wallpaperOperationsProvider);
+    final activeOperation = ref.watch(wallpaperOperationsProvider);
+    final isThisLoading = activeOperation == WallpaperOperation.chooser;
+    final isDisabled = activeOperation != WallpaperOperation.none;
 
     return CustomButton.text(
       width: double.infinity,
       borderRadius: AppRadius.radiusLg,
-      isLoading: isOperationRunning,
+      isLoading: isThisLoading,
       text: AppLocalizations.of(context)!.bottomWallSelectorChooser,
-      onPressed: () => _openChooser(context, ref),
+      onPressed: isDisabled ? null : () => _openChooser(context, ref),
     );
   }
 
@@ -571,14 +585,16 @@ class _NativePickerButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isOperationRunning = ref.watch(wallpaperOperationsProvider);
+    final activeOperation = ref.watch(wallpaperOperationsProvider);
+    final isThisLoading = activeOperation == WallpaperOperation.nativePicker;
+    final isDisabled = activeOperation != WallpaperOperation.none;
 
-    return CustomButton.tonal(
+    return CustomButton.outlined(
       width: double.infinity,
       borderRadius: AppRadius.radiusLg,
-      isLoading: isOperationRunning,
+      isLoading: isThisLoading,
       text: AppLocalizations.of(context)!.bottomWallSelectorNative,
-      onPressed: () => _openNativePicker(context, ref),
+      onPressed: isDisabled ? null : () => _openNativePicker(context, ref),
     );
   }
 

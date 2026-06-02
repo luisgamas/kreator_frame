@@ -53,8 +53,12 @@ class MainActivity : FlutterActivity() {
                                 val service = WallpapersNativeServices(applicationContext)
                                 val intent = service.prepareNativeWallpaperIntent(url)
                                 Handler(Looper.getMainLooper()).post {
-                                    startActivity(intent)
-                                    result.success(true)
+                                    try {
+                                        startActivity(intent)
+                                        result.success(true)
+                                    } catch (e: Exception) {
+                                        result.error("WALLPAPER_ERROR", "Failed to launch native picker: ${e.message}", null)
+                                    }
                                 }
                             } catch (e: Exception) {
                                 Handler(Looper.getMainLooper()).post {
@@ -75,8 +79,12 @@ class MainActivity : FlutterActivity() {
                                 val service = WallpapersNativeServices(applicationContext)
                                 val intent = service.prepareWallpaperChooserIntent(url)
                                 Handler(Looper.getMainLooper()).post {
-                                    startActivity(intent)
-                                    result.success(true)
+                                    try {
+                                        startActivity(intent)
+                                        result.success(true)
+                                    } catch (e: Exception) {
+                                        result.error("WALLPAPER_ERROR", "Failed to launch wallpaper chooser: ${e.message}", null)
+                                    }
                                 }
                             } catch (e: Exception) {
                                 Handler(Looper.getMainLooper()).post {
