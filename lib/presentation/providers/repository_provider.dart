@@ -6,6 +6,17 @@ import 'package:kreator_frame/domain/domain.dart';
 import 'package:kreator_frame/infrastructure/infrastructure.dart';
 import 'package:kreator_frame/shared/services/services.dart';
 
+/// Provider for the key-value storage service.
+///
+/// Exposes [KeyValueStorageServicesImpl] as the abstract [KeyValueStorageServices]
+/// contract so consumers depend on the interface, not the concrete class.
+/// The singleton semantics of SharedPreferences are already handled inside
+/// [KeyValueStorageServicesImpl] via its static cache; this provider simply
+/// makes the service injectable and mockable for testing.
+final keyValueStorageProvider = Provider<KeyValueStorageServices>((ref) {
+  return KeyValueStorageServicesImpl();
+});
+
 /// Provider for the active wallpaper download cancel token holder.
 ///
 /// The holder is intentionally exposed as a singleton-style provider (not

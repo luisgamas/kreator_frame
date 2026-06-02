@@ -7,7 +7,7 @@
 >
 > Fecha: 2026-05-30
 >
-> Última actualización: 2026-06-01 — Bugs 2.2 (ThemeModeEntity con tipos Flutter en domain) y 2.3 (NetworkFailure código muerto) resueltos. Domain layer ahora libre de dependencias Flutter UI.
+> Última actualización: 2026-06-01 — Bug 3.5 (KeyValueStorageServicesImpl sin DI) resuelto mediante `keyValueStorageProvider` inyectado via Riverpod. Domain layer libre de dependencias Flutter UI y todas las dependencias ahora siguen el patrón DI explícito.
 
 ---
 
@@ -31,7 +31,7 @@
 |-----------|----------|-------------|
 | 🔴 Crítico | 0 | Todos los issues críticos han sido resueltos (ver tabla de estado). |
 | 🟠 Alto | 0 | Todos los issues altos han sido resueltos. |
-| 🟡 Medio | 1 | `KeyValueStorageServicesImpl` instanciado directamente — `3.5` pendiente. |
+| 🟡 Medio | 0 | Todos los issues medios han sido resueltos. |
 | 🟢 Bajo | 0 | Sin issues abiertos. |
 
 ### Estado de implementación
@@ -42,7 +42,7 @@
 | 3.2 Efecto secundario InAppUpdateNotifier | ✅ RESUELTO | `2cc506a` |
 | 3.3 Async no await PermissionsNotifier | ✅ RESUELTO | `f7e5b2a` |
 | 3.4 Falta de ref.mounted post-async | ✅ RESUELTO | `2cc506a` |
-| 3.5 KeyValueStorageServicesImpl sin DI | ❌ PENDIENTE | — |
+| 3.5 KeyValueStorageServicesImpl sin DI | ✅ RESUELTO | (ver sección 3.5) |
 | 3.6 ref.watch en métodos de acción | ✅ RESUELTO | `a53bc82` |
 | 4.1 getListOfWidgets caching | ✅ RESUELTO | `4fb6553` |
 | 4.2 WallpaperPreviewScreen memoria | ✅ RESUELTO | `4eee4b2` |
@@ -407,11 +407,13 @@ Future<void> checkAppForUpdates() async {
 
 ---
 
-### 3.5 🟡 \`KeyValueStorageServicesImpl\` instanciado directamente ❌ PENDIENTE
+### 3.5 🟡 \`KeyValueStorageServicesImpl\` instanciado directamente ✅ RESUELTO (2026-06-01)
 
-**Archivo:** `lib/presentation/providers/app_values_preferences_provider.dart`
+**Archivos:**
+- `lib/presentation/providers/repository_provider.dart` — nuevo `keyValueStorageProvider` (`Provider<KeyValueStorageServices>`) inyectado como singleton.
+- `lib/presentation/providers/app_values_preferences_provider.dart` — `build()` usa `ref.watch(keyValueStorageProvider)`, métodos de acción usan `ref.read(keyValueStorageProvider)`.
 
-**Problema:**
+**Problema original:**
 ```dart
 @override
 AppValuesPreferencesState build() {
@@ -420,32 +422,57 @@ AppValuesPreferencesState build() {
 }
 ```
 
-`KeyValueStorageServicesImpl` se crea dentro del notifier en lugar de inyectarse via provider. Esto impide:
+`KeyValueStorageServicesImpl` se creaba dentro del notifier en lugar de inyectarse via provider. Esto impedía:
 - Testing con mocks
 - Reutilización del mismo singleton de SharedPreferences
 - Cambio de implementación sin modificar el notifier
 
-**Posible mejora:**
+**Solución aplicada (siguiendo `flutter-clean-architect` + `flutter-riverpod-expert`):**
+
+1. **Provider de servicio centralizado** — `keyValueStorageProvider` expone `KeyValueStorageServicesImpl` como la interfaz abstracta `KeyValueStorageServices`, siguiendo el patrón de inyección ya existente en el proyecto (`downloadCancelTokenHolderProvider`, `dataSourceProvider`, `repositoryProvider`):
+
 ```dart
-// Provider
 final keyValueStorageProvider = Provider<KeyValueStorageServices>((ref) {
   return KeyValueStorageServicesImpl();
 });
+```
 
-// En el notifier
-class AppValuesPreferencesNotifier extends Notifier<AppValuesPreferencesState> {
-  @override
-  AppValuesPreferencesState build() {
-    _keyValueStorageServices = ref.watch(keyValueStorageProvider);
-    ...
-  }
+2. **Inyección en el notifier** — `build()` inyecta via `ref.watch()` (suscripción reactiva), métodos de acción usan `ref.read()` (lectura puntual):
+
+```dart
+@override
+Future<AppValuesPreferencesState> build() async {
+  final keyValueStorageServices = ref.watch(keyValueStorageProvider);
+  return _loadPreferences(keyValueStorageServices);
+}
+
+Future<void> setPreferenceForThemeMode(ThemeModeOption option) async {
+  final keyValueStorageServices = ref.read(keyValueStorageProvider);
+  await keyValueStorageServices.setKeyValue(Environment.keyThemeMode, option.name);
+  ...
 }
 ```
 
-**Relaciones:**
-- `KeyValueStorageServicesImpl` — no cambia
-- `AppValuesPreferencesNotifier` — recibe la dependencia via DI
-- Test mocking — se facilita significativamente
+3. **Contrato preservado** — La interfaz abstracta `KeyValueStorageServices` ya existía en `shared/services/key_value_storage_service.dart`. El provider expone la interfaz, no la implementación, facilitando mocks en tests:
+
+```dart
+final container = ProviderContainer.test(
+  overrides: [
+    keyValueStorageProvider.overrideWithValue(MockKeyValueStorageServices()),
+  ],
+);
+```
+
+**Mejoras incluidas:**
+- **Testabilidad**: el provider se puede mockear trivialmente para tests unitarios del notifier.
+- **Consistencia**: sigue el mismo patrón DI que `downloadCancelTokenHolderProvider`, `dataSourceProvider` y `repositoryProvider`.
+- **Singleton implícito**: `Provider` (no `autoDispose`) garantiza una única instancia mientras el provider scope viva. SharedPreferences ya cachea internamente, pero el provider evita instanciaciones redundantes de `KeyValueStorageServicesImpl`.
+- **Desacoplamiento**: el notifier ya no conoce `KeyValueStorageServicesImpl`, solo conoce `KeyValueStorageServices`.
+
+**Resultado:**
+- Las 4 instancias directas de `KeyValueStorageServicesImpl()` se reemplazan por una inyección centralizada.
+- `flutter analyze` y `flutter test` (25/25) pasan sin issues.
+- No se rompe la funcionalidad: las preferencias siguen persistiéndose y cargándose igual.
 
 ---
 
@@ -1448,7 +1475,7 @@ Future<void> setPreferenceForThemeMode(ThemeMode themeMode) async {
 | Archivo | Problema original | Fix |
 |---------|-------------------|-----|
 | `lib/infrastructure/datasources/datasource_impl.dart` | `Archive` sin dispose, sin caching, `firstWhere` sin `orElse`, `CancelToken` frágil | 4.1, 7.1, 7.3 |
-| `lib/presentation/providers/app_values_preferences_provider.dart` | Race condition en `build()`, `setKeyValue` sin await | 3.1, 3.5 (pendiente DI), 7.5 |
+| `lib/presentation/providers/app_values_preferences_provider.dart` | Race condition en `build()`, `setKeyValue` sin await, sin DI para KeyValueStorage | 3.1, 3.5 ✅ RESUELTO, 7.5 |
 | `lib/presentation/providers/in_app_update_provider.dart` | Efecto secundario en `build()`, falta de `ref.mounted` | 3.2, 3.4 |
 
 ### Archivos altos (resueltos o con seguimiento explícito)

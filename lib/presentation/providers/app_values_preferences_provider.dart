@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // 🌎 Project imports:
 import 'package:kreator_frame/config/constants/environment.dart';
 import 'package:kreator_frame/domain/domain.dart';
+import 'package:kreator_frame/presentation/providers/repository_provider.dart';
 import 'package:kreator_frame/shared/services/services.dart';
 import 'package:kreator_frame/shared/utils/utils.dart';
 
@@ -63,7 +64,7 @@ class AppValuesPreferencesState {
 class AppValuesPreferencesNotifier extends AsyncNotifier<AppValuesPreferencesState> {
   @override
   Future<AppValuesPreferencesState> build() async {
-    final keyValueStorageServices = KeyValueStorageServicesImpl();
+    final keyValueStorageServices = ref.watch(keyValueStorageProvider);
     return _loadPreferences(keyValueStorageServices);
   }
 
@@ -101,7 +102,7 @@ class AppValuesPreferencesNotifier extends AsyncNotifier<AppValuesPreferencesSta
     final currentState = state.value;
     if (currentState == null) return;
 
-    final keyValueStorageServices = KeyValueStorageServicesImpl();
+    final keyValueStorageServices = ref.read(keyValueStorageProvider);
     await keyValueStorageServices.setKeyValue(Environment.keyThemeMode, option.name);
     if (!ref.mounted) return;
     if (option != currentState.themeModeOption) {
@@ -114,7 +115,7 @@ class AppValuesPreferencesNotifier extends AsyncNotifier<AppValuesPreferencesSta
     if (currentState == null) return;
 
     final colorIndex = AppConstants.accentColors.indexOf(color);
-    final keyValueStorageServices = KeyValueStorageServicesImpl();
+    final keyValueStorageServices = ref.read(keyValueStorageProvider);
     await keyValueStorageServices.setKeyValue(Environment.keyColorTheme, colorIndex);
     if (!ref.mounted) return;
     state = AsyncData(currentState.copyWith(
@@ -127,7 +128,7 @@ class AppValuesPreferencesNotifier extends AsyncNotifier<AppValuesPreferencesSta
     final currentState = state.value;
     if (currentState == null) return;
 
-    final keyValueStorageServices = KeyValueStorageServicesImpl();
+    final keyValueStorageServices = ref.read(keyValueStorageProvider);
     await keyValueStorageServices.setKeyValue(Environment.keyColorTheme, -1);
     if (!ref.mounted) return;
     state = AsyncData(currentState.copyWith(isDynamicColor: true));
