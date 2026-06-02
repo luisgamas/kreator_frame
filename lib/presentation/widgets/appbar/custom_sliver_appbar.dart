@@ -30,7 +30,6 @@ class CustomSliverAppBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final textStyles = Theme.of(context).textTheme;
     final colors = Theme.of(context).colorScheme;
-    final size = MediaQuery.of(context).size;
 
     // * Widget
     return SliverAppBar(
@@ -53,17 +52,14 @@ class CustomSliverAppBar extends ConsumerWidget {
           ),
         ),
       ),
-      bottom: PreferredSize(
-        preferredSize: Size.fromHeight(size.height * 0.05),
-        child: TabBar(
-          labelStyle: textStyles.labelLarge,
-          unselectedLabelStyle: textStyles.labelMedium,
-          labelColor: colors.secondary,
-          indicatorColor: colors.secondary,
-          unselectedLabelColor: colors.outline,
-          splashBorderRadius: AppRadius.radiusSm,
-          tabs: tabs,
-        ),
+      bottom: TabBar(
+        labelStyle: textStyles.labelLarge,
+        unselectedLabelStyle: textStyles.labelMedium,
+        labelColor: colors.secondary,
+        indicatorColor: colors.secondary,
+        unselectedLabelColor: colors.outline,
+        splashBorderRadius: AppRadius.radiusSm,
+        tabs: tabs,
       ),
     );
   }
