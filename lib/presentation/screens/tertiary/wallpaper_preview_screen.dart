@@ -78,7 +78,7 @@ class _WallpaperPreviewScreenState extends ConsumerState<WallpaperPreviewScreen>
 }
 
 // ##
-class _HeroImagePreview extends StatelessWidget {
+class _HeroImagePreview extends StatefulWidget {
   final WallpaperEntity wallpaperEntity;
 
   const _HeroImagePreview({
@@ -86,29 +86,151 @@ class _HeroImagePreview extends StatelessWidget {
   });
 
   @override
+  State<_HeroImagePreview> createState() => _HeroImagePreviewState();
+}
+
+class _HeroImagePreviewState extends State<_HeroImagePreview> {
+  bool _isHighResLoaded = false;
+  bool _hasStartedLoading = false;
+
+  CachedNetworkImageProvider? _highResProvider;
+  Animation<double>? _routeAnimation;
+  AnimationStatusListener? _statusListener;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _setupRouteAnimationListener();
+  }
+
+  /// Sets up a listener on the route entry animation to defer loading the
+  /// heavy high-resolution image until after the animation finishes.
+  void _setupRouteAnimationListener() {
+    if (_hasStartedLoading) return;
+
+    final route = ModalRoute.of(context);
+    final animation = route?.animation;
+    if (animation == null) {
+      _startLoadingHighRes();
+      return;
+    }
+
+    _routeAnimation = animation;
+    _statusListener = (status) {
+      if (status == AnimationStatus.completed) {
+        _startLoadingHighRes();
+        _cleanupRouteListener();
+      }
+    };
+    animation.addStatusListener(_statusListener!);
+
+    // If the animation is already completed (e.g. returning to this screen), start immediately.
+    if (animation.isCompleted) {
+      _startLoadingHighRes();
+      _cleanupRouteListener();
+    }
+  }
+
+  void _cleanupRouteListener() {
+    if (_routeAnimation != null && _statusListener != null) {
+      _routeAnimation!.removeStatusListener(_statusListener!);
+      _routeAnimation = null;
+      _statusListener = null;
+    }
+  }
+
+  /// Begins loading and decoding the full high-resolution image in the background.
+  void _startLoadingHighRes() {
+    if (!mounted || _hasStartedLoading) return;
+    _hasStartedLoading = true;
+
+    final url = widget.wallpaperEntity.url;
+    final provider = CachedNetworkImageProvider(url);
+    _highResProvider = provider;
+
+    precacheImage(provider, context).then((_) {
+      if (mounted) {
+        setState(() {
+          _isHighResLoaded = true;
+        });
+      }
+    }).catchError((error) {
+      debugPrint('Error pre-caching high-res wallpaper: $error');
+    });
+  }
+
+  @override
+  void dispose() {
+    _cleanupRouteListener();
+    // Evict the heavy full-resolution image from Flutter's memory cache
+    // when disposing the preview screen to prevent memory leaks and free up RAM.
+    if (_highResProvider != null) {
+      _highResProvider!.evict().then((bool success) {
+        debugPrint('High-res wallpaper evicted from cache: $success');
+      }).catchError((error) {
+        debugPrint('Error evicting high-res wallpaper: $error');
+      });
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
 
+    // Lightweight low-resolution preview image (decoded at smaller size)
+    final lowResImage = CachedNetworkImage(
+      imageUrl: widget.wallpaperEntity.url,
+      width: size.width,
+      height: size.height,
+      fit: BoxFit.fitHeight,
+      filterQuality: FilterQuality.medium,
+      memCacheWidth: (size.width * 1.5).round(),
+      placeholder: (context, url) => const Center(
+        child: CircularProgressIndicator(strokeCap: StrokeCap.round),
+      ),
+      errorWidget: (_, _, _) => const Center(
+        child: Icon(
+          Hicon.dangerTriangleOutline,
+        ),
+      ),
+    );
+
+    // Full high-resolution image widget
+    Widget highResImage;
+    if (_highResProvider != null) {
+      highResImage = Image(
+        image: _highResProvider!,
+        width: size.width,
+        height: size.height,
+        fit: BoxFit.fitHeight,
+        filterQuality: FilterQuality.high,
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      );
+    } else {
+      highResImage = const SizedBox.shrink();
+    }
+
     return Hero(
-      tag: wallpaperEntity.url,
+      tag: widget.wallpaperEntity.url,
       child: InteractiveViewer(
         clipBehavior: Clip.none,
         constrained: false,
-        child: CachedNetworkImage(
-          imageUrl: wallpaperEntity.url,
-          width: size.width,
-          height: size.height,
-          fit: BoxFit.fitHeight,
-          filterQuality: FilterQuality.high,
-          memCacheWidth: (size.width * 1.5).round(),
-          placeholder: (context, url) => const Center(
-            child: CircularProgressIndicator(strokeCap: StrokeCap.round),
-          ),
-          errorWidget: (_, _, _) => const Center(
-            child: Icon(
-              Hicon.dangerTriangleOutline
+        child: Stack(
+          children: [
+            // Always render low-resolution image as the base/placeholder
+            lowResImage,
+
+            // Smoothly cross-fade to the high-resolution image once loaded
+            Positioned.fill(
+              child: AnimatedOpacity(
+                opacity: _isHighResLoaded ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeIn,
+                child: highResImage,
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
