@@ -36,8 +36,8 @@ class AboutDashboardScreen extends ConsumerWidget {
               delegate: SliverChildListDelegate([
                 // * Profile header
                 const ProfileHeader(
-                  imagePath: Environment.iconDashboardLogo,
-                  title: Environment.dashName,
+                  imagePath: AssetPaths.iconDashboardLogo,
+                  title: AppInfo.appName,
                   subtitle: 'Dashboard',
                   showVerifiedBadge: true,
                 ),
@@ -54,11 +54,11 @@ class AboutDashboardScreen extends ConsumerWidget {
                 // * Social media links
                 SocialMediaButtonList(
                   onTwitterPressed: () =>
-                      navOps.launchExternalApp(Environment.externalLinkTwitter),
+                      navOps.launchExternalApp(ExternalLinks.twitter),
                   onInstagramPressed: () =>
-                      navOps.launchExternalApp(Environment.externalLinkInstagram),
+                      navOps.launchExternalApp(ExternalLinks.instagram),
                   onPersonalSitePressed: () =>
-                      navOps.launchExternalApp(Environment.externalLinkWebsite),
+                      navOps.launchExternalApp(ExternalLinks.website),
                 ),
 
                 const Gap(AppSpacing.xl),

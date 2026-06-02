@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // 🌎 Project imports:
 import 'package:kreator_frame/config/config.dart';
+import 'package:kreator_frame/config/constants/env_vars.dart';
 import 'package:kreator_frame/domain/domain.dart';
 import 'package:kreator_frame/presentation/providers/repository_provider.dart';
 import 'package:kreator_frame/presentation/screens/secondary/kustom_widgets_screen.dart';
@@ -39,8 +40,8 @@ class TabsBarAppNotifier extends AsyncNotifier<List<TabBarEntity>> {
       );
     }
 
-    if (Environment.userWallpapersUrl != 'NA' &&
-        Environment.userWallpapersUrl != 'Error WALLPAPERS_URL') {
+    if (EnvVars.userWallpapersUrl != 'NA' &&
+        EnvVars.userWallpapersUrl != 'Error WALLPAPERS_URL') {
       tabList.add(
         const TabBarEntity(
           type: TabBarType.wallpapers,

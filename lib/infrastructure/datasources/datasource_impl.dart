@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 // 🌎 Project imports:
 import 'package:kreator_frame/config/config.dart';
+import 'package:kreator_frame/config/constants/env_vars.dart';
 import 'package:kreator_frame/domain/domain.dart';
 import 'package:kreator_frame/infrastructure/infrastructure.dart';
 import 'package:kreator_frame/shared/services/services.dart';
@@ -150,7 +151,7 @@ class DataSourceImpl extends DataSource {
   @override
   Future<List<WallpaperEntity>> getListOfWallpapers() async {
     try {
-      final response = await _dio.get(Environment.userWallpapersUrl);
+      final response = await _dio.get(EnvVars.userWallpapersUrl);
       final wallpaperModel = WallpaperModel.fromJson(response.data as Map<String, dynamic>);
 
       final List<WallpaperEntity> wallpapersEntities = wallpaperModel.wallpapers
@@ -345,7 +346,7 @@ class DataSourceImpl extends DataSource {
 
         widgets.add(WidgetEntity(
           nameWidget: zipFileName.replaceAll('.$filesExt', ''),
-          nameDeveloper: Environment.userDeveloperName,
+          nameDeveloper: EnvVars.userDeveloperName,
           widgetThumbnail: Uint8List.fromList(thumbFile.content as List<int>),
           assetPath: '$folderAsset/$zipFileName',
         ));

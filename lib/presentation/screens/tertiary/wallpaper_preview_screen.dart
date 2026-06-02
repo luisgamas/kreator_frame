@@ -297,7 +297,7 @@ class _BottomCardContent extends StatelessWidget {
                   icon: Hicon.home3Outline,
                   label: AppLocalizations.of(context)!.bottomWallSelectorHS,
                   wallpaperEntity: wallpaperEntity,
-                  screenLocation: Environment.wallpaperHomeScreen,
+                  screenLocation: WallpaperConstants.wallpaperHomeScreen,
                 ),
               ),
               Expanded(
@@ -305,7 +305,7 @@ class _BottomCardContent extends StatelessWidget {
                   icon: Hicon.lock2Outline,
                   label: AppLocalizations.of(context)!.bottomWallSelectorLS,
                   wallpaperEntity: wallpaperEntity,
-                  screenLocation: Environment.wallpaperLockScreen,
+                  screenLocation: WallpaperConstants.wallpaperLockScreen,
                 ),
               ),
               Expanded(
@@ -313,7 +313,7 @@ class _BottomCardContent extends StatelessWidget {
                   icon: Hicon.display1Outline,
                   label: AppLocalizations.of(context)!.bottomWallSelectorBS,
                   wallpaperEntity: wallpaperEntity,
-                  screenLocation: Environment.wallpaperBothScreens,
+                  screenLocation: WallpaperConstants.wallpaperBothScreens,
                 ),
               ),
             ],

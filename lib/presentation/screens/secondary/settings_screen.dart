@@ -65,7 +65,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
 
             CustomListTile(
-              title: Environment.dashName,
+              title: AppInfo.appName,
               subTitle: AppLocalizations.of(context)!.settingsAboutLST2,
               leadingWidget: const Icon(Hicon.graphBold),
               onTap: () => appRouter.push(AppRoutes.aboutDashboard),
@@ -84,7 +84,7 @@ class SettingsScreen extends ConsumerWidget {
               leadingWidget: const Icon(Hicon.documentAlignLeft4Bold),
               trailingIcon: Hicon.linkBold,
               onTap: () =>
-                  navOps.launchExternalApp(Environment.externalLinkTermsAndConditions),
+                  navOps.launchExternalApp(ExternalLinks.termsAndConditions),
             ),
 
             CustomListTile(
@@ -93,7 +93,7 @@ class SettingsScreen extends ConsumerWidget {
               leadingWidget: const Icon(Hicon.documentAlignLeft4Bold),
               trailingIcon: Hicon.linkBold,
               onTap: () =>
-                  navOps.launchExternalApp(Environment.externalLinkPrivacyPolicy),
+                  navOps.launchExternalApp(ExternalLinks.privacyPolicy),
             ),
 
             const Gap(AppSpacing.lg),
@@ -126,8 +126,8 @@ class SettingsScreen extends ConsumerWidget {
 
             const ListTile(
               contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              title: Text(Environment.dashName),
-              subtitle: Text(Environment.dashVersion),
+              title: Text(AppInfo.appName),
+              subtitle: Text(AppInfo.appVersion),
               leading: Icon(Hicon.informationCircleBold),
             ),
           ])
@@ -188,7 +188,7 @@ class _DonationBanner extends ConsumerWidget {
                     height: 48,
                     text: AppLocalizations.of(context)!.donationsButton,
                     onPressed: () =>
-                        navOps.launchExternalApp(Environment.externalLinkBuyMeACoffe),
+                        navOps.launchExternalApp(ExternalLinks.buyMeACoffee),
                   ),
                 ],
               ),

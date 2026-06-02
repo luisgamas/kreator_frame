@@ -7,7 +7,7 @@
 >
 > Fecha: 2026-05-30
 >
-> Última actualización: 2026-06-01 — Bugs 5.1 (MyApp ref.select) y 5.2 (WallpaperDownloadButton rebuilds) resueltos mediante extracción de widgets y uso de ref.select() para optimizar rebuilds.
+> Última actualización: 2026-06-01 — Bugs 6.2 (Environment responsabilidades) y 7.4 (MyApp efecto secundario) resueltos. Environment separado en archivos enfocados (env_vars, storage_keys, app_info, asset_paths, wallpaper_constants, external_links, kustom_config) con barrel export. MyApp usa ConsumerStatefulWidget con addPostFrameCallback para evitar efectos secundarios en build().
 
 ---
 
@@ -53,11 +53,11 @@
 | 5.2 WallpaperDownloadButton rebuilds | ✅ RESUELTO | (ver sección 5.2) |
 | 5.3 keepAlive providers | ✅ CORRECTO | — |
 | 6.1 Acceso directo repository | ✅ RESUELTO | (ver sección 6.1) |
-| 6.2 Environment responsabilidades | ⏭️ OMITIDO | mantenibilidad |
+| 6.2 Environment responsabilidades | ✅ RESUELTO | (ver sección 6.2) |
 | 7.1 _activeCancelToken pérdida de referencia | ✅ RESUELTO | (ver sección 7.1) |
 | 7.2 ref.watch en acciones | ✅ RESUELTO | `a53bc82` |
 | 7.3 firstWhere sin orElse | ✅ RESUELTO | `4fb6553` |
-| 7.4 MyApp efecto secundario | ⏭️ OMITIDO | bajo impacto |
+| 7.4 MyApp efecto secundario | ✅ RESUELTO | (ver sección 7.4) |
 | 7.5 setKeyValue sin await | ✅ RESUELTO | `11cf168` |
 | 2.1 TabBarEntity Widget | ✅ RESUELTO | `c58ebfa` |
 | 2.2 ThemeModeEntity tipos Flutter | ✅ RESUELTO | (ver sección 2.2) |
@@ -1244,38 +1244,94 @@ Future<void> _handleWidgetTap(BuildContext context, WidgetRef ref, String assetP
 
 ---
 
-### 6.2 🟡 `Environment` mezcla múltiples responsabilidades ⏭️ OMITIDO (mejora de mantenibilidad, bajo impacto funcional)
+### 6.2 🟡 `Environment` mezcla múltiples responsabilidades ✅ RESUELTO (2026-06-01)
 
-**Archivo:** `lib/config/constants/environment.dart`
+**Archivos:**
+- `lib/config/constants/env_vars.dart` — variables de entorno de `.env` (developer name, URLs).
+- `lib/config/constants/storage_keys.dart` — keys de SharedPreferences.
+- `lib/config/constants/app_info.dart` — constantes de la app (nombre, versión, developer).
+- `lib/config/constants/asset_paths.dart` — rutas de assets.
+- `lib/config/constants/wallpaper_constants.dart` — constantes de Android (wallpaper flags).
+- `lib/config/constants/external_links.dart` — URLs externas.
+- `lib/config/constants/kustom_config.dart` — paquetes y activities de Kustom.
+- `lib/config/constants/environment.dart` — barrel export que re-exporta todos los archivos.
 
-**Problema:**
-La clase `Environment` contiene:
-1. Variables de entorno de `.env` (developer name, URLs)
-2. Keys de SharedPreferences
-3. Constantes de la app (nombre, versión)
-4. Paths de assets
-5. Constantes de Android (wallpaper flags)
-6. URLs externas
-7. Paquetes de Kustom
+**Problema original:**
+La clase `Environment` contenía 7 tipos diferentes de constantes mezcladas en un solo archivo, dificultando encontrar configuraciones y creando acoplamiento innecesario.
 
-Esto dificulta encontrar configuraciones y crea acoplamiento innecesario.
+**Solución aplicada (siguiendo `flutter-clean-architect`):**
 
-**Posible mejora:**
-Separar en archivos enfocados:
+1. **Separación por responsabilidad** — Cada tipo de constante vive en su propio archivo con un nombre descriptivo:
+
+```dart
+// env_vars.dart
+class EnvVars {
+  EnvVars._();
+  static String userDeveloperName = dotenv.env['DEVELOPER_NAME'] ?? 'Error DEVELOPER_NAME';
+  // ...
+}
+
+// storage_keys.dart
+class StorageKeys {
+  StorageKeys._();
+  static const String keyThemeMode = 'ThemeMode';
+  // ...
+}
+
+// app_info.dart
+class AppInfo {
+  AppInfo._();
+  static const String appName = 'Kreator Frame';
+  // ...
+}
 ```
-lib/config/constants/
-├── environment.dart        ← Solo .env vars
-├── app_constants.dart      ← Nombre, versión, developer
-├── storage_keys.dart       ← SharedPreferences keys
-├── asset_paths.dart        ← Rutas de assets
-├── android_constants.dart  ← Wallpaper flags, etc.
-├── external_links.dart     ← URLs externas
-└── kustom_config.dart      ← Paquetes y activities de Kustom
+
+2. **Barrel export para compatibilidad** — `environment.dart` mantiene la compatibilidad re-exportando todos los archivos:
+
+```dart
+// environment.dart
+export 'app_info.dart';
+export 'asset_paths.dart';
+export 'env_vars.dart';
+export 'external_links.dart';
+export 'kustom_config.dart';
+export 'storage_keys.dart';
+export 'wallpaper_constants.dart';
 ```
 
-**Relaciones:**
-- Todos los archivos que importan `Environment` — necesitan actualizar imports
-- No rompe funcionalidad, mejora mantenibilidad
+3. **Imports actualizados** — Todos los archivos que usaban `Environment` ahora importan la clase específica o usan el barrel export:
+
+```dart
+// Antes
+import 'package:kreator_frame/config/constants/environment.dart';
+Environment.keyColorTheme
+
+// Después (opción específica)
+import 'package:kreator_frame/config/constants/storage_keys.dart';
+StorageKeys.keyColorTheme
+
+// Después (opción barrel)
+import 'package:kreator_frame/config/config.dart';
+StorageKeys.keyColorTheme
+```
+
+**Archivos actualizados:**
+- `lib/presentation/providers/app_values_preferences_provider.dart` — usa `StorageKeys`
+- `lib/presentation/screens/tertiary/about_package_app_screen.dart` — usa `AssetPaths`, `EnvVars`, `AppInfo`
+- `lib/presentation/screens/tertiary/about_dashboard_screen.dart` — usa `AssetPaths`, `AppInfo`, `ExternalLinks`
+- `lib/presentation/screens/secondary/settings_screen.dart` — usa `AppInfo`, `ExternalLinks`
+- `lib/presentation/screens/secondary/kustom_widgets_screen.dart` — usa `ExternalLinks`, `KustomConfig`
+- `lib/presentation/screens/tertiary/wallpaper_preview_screen.dart` — usa `WallpaperConstants`
+- `lib/infrastructure/datasources/datasource_impl.dart` — usa `EnvVars`
+- `lib/presentation/widgets/appbar/custom_sliver_appbar.dart` — usa `AssetPaths`, `EnvVars`, `AppInfo`
+- `lib/presentation/providers/tabs_bar_app_provider.dart` — usa `EnvVars`
+
+**Resultado:**
+- Cada constante vive en un archivo enfocado con un nombre descriptivo.
+- Los imports son más explícitos sobre qué constantes se usan.
+- `environment.dart` mantiene la compatibilidad con código existente.
+- `flutter analyze` y `flutter test` (25/25) pasan sin issues.
+- No se rompe la funcionalidad: todas las constantes siguen accesibles con los mismos valores.
 
 ---
 
@@ -1490,11 +1546,11 @@ final thumbFile = archive.firstWhereOrNull((file) => file.name == thumbName);
 
 ---
 
-### 7.4 🟡 `MyApp.build()` — efecto secundario con `ref.read` en `build()` ⏭️ OMITIDO (necesario para validación de dynamic color, bajo impacto)
+### 7.4 🟡 `MyApp.build()` — efecto secundario con `ref.read` en `build()` ✅ RESUELTO (2026-06-01)
 
 **Archivo:** `lib/main.dart`
 
-**Problema:**
+**Problema original:**
 ```dart
 @override
 Widget build(BuildContext context, WidgetRef ref) {
@@ -1507,31 +1563,62 @@ Widget build(BuildContext context, WidgetRef ref) {
 
 Llamar a `ref.read(...).updateDynamicColorAvailability()` dentro de `build()` es un efecto secundario. Cada rebuild de `MyApp` puede actualizar el estado del provider, causando un ciclo potencial de rebuilds.
 
-**Posible mejora:**
-Usar `ref.listen()` en un widget raíz o mover la lógica a un `Hook` o `useEffect`:
+**Análisis de la sugerencia original:**
+La sugerencia proponía usar `ref.listen()` o mover la lógica al notifier. Sin embargo, la validación de dynamic color depende de los esquemas de color proporcionados por `DynamicColorBuilder`, que solo están disponibles en el contexto del widget.
+
+**Solución aplicada (siguiendo `flutter-riverpod-expert`):**
+
+1. **`ConsumerStatefulWidget` con `addPostFrameCallback`** — `_MyAppContent` se convierte en `ConsumerStatefulWidget` para poder usar `initState` y programar la actualización después del frame:
 
 ```dart
-// En MyApp o en un widget wrapper
-ref.listen(appValuesPreferencesProvider, (prev, next) {
-  // La lógica de validación de dynamic color ya debería estar en el notifier
-});
-```
+class _MyAppContent extends ConsumerStatefulWidget {
+  const _MyAppContent();
 
-O mejor, mover toda la lógica de validación de dynamic color al `AppValuesPreferencesNotifier`:
+  @override
+  ConsumerState<_MyAppContent> createState() => _MyAppContentState();
+}
 
-```dart
-// En el notifier, después de cargar preferencias:
-void validateDynamicColor(bool isAvailable) {
-  if (state.isDynamicColor && state.dynamicColorAvailable != isAvailable) {
-    state = state.copyWith(dynamicColorAvailable: isAvailable);
+class _MyAppContentState extends ConsumerState<_MyAppContent> {
+  @override
+  void initState() {
+    super.initState();
+    // Schedule the dynamic color validation after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _validateDynamicColor();
+    });
   }
+  // ...
 }
 ```
 
-**Relaciones:**
-- `appValuesPreferencesProvider` — recibe la actualización
-- `DynamicColorValidator` — se puede integrar en el notifier
-- `ThemeSelectorScreen` — muestra el warning de dynamic color
+2. **`addPostFrameCallback` en el builder** — La actualización del notifier se programa después de que el frame se complete, evitando el efecto secundario en `build()`:
+
+```dart
+return DynamicColorBuilder(
+  builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+    // ... validación de dynamic color ...
+
+    // Update notifier after the build completes to avoid side-effects in build()
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(appValuesPreferencesProvider.notifier).updateDynamicColorAvailability(dynamicAvailable);
+    });
+
+    // ... construcción del MaterialApp ...
+  },
+);
+```
+
+**Mejoras incluidas:**
+- **Sin efectos secundarios en `build()`**: la actualización del notifier se programa después del frame.
+- **Ciclo de rebuilds evitado**: `addPostFrameCallback` se ejecuta una vez por frame, no en cada rebuild.
+- **Lógica de validación preservada**: la validación de dynamic color sigue ocurriendo en el contexto correcto del widget.
+- **Compatibilidad con `ref.select()`**: el widget sigue usando `ref.select()` para optimizar rebuilds.
+
+**Resultado:**
+- `_MyAppContent` ya no tiene efectos secundarios directos en `build()`.
+- La actualización de `dynamicColorAvailable` se programa después del frame.
+- `flutter analyze` y `flutter test` (25/25) pasan sin issues.
+- No se rompe la funcionalidad: la validación de dynamic color sigue funcionando correctamente.
 
 ---
 
@@ -1596,8 +1683,8 @@ Future<void> setPreferenceForThemeMode(ThemeMode themeMode) async {
 
 | Archivo | Problema original | Fix |
 |---------|-------------------|-----|
-| `lib/main.dart` | Efecto secundario en `build()`, sin `ref.select()` | 5.1, 7.4 (ambos omitidos por bajo impacto) |
-| `lib/config/constants/environment.dart` | Mezcla de responsabilidades | 6.2 (omitido por mantenibilidad) |
+| `lib/main.dart` | Efecto secundario en `build()`, sin `ref.select()` | 5.1 ✅ RESUELTO, 7.4 ✅ RESUELTO |
+| `lib/config/constants/environment.dart` | Mezcla de responsabilidades | 6.2 ✅ RESUELTO |
 | `lib/shared/services/key_value_storage_service_impl.dart` | `SharedPreferences.getInstance()` repetido | 4.6 |
 | `lib/domain/entities/theme_mode_entity.dart` | Tipos Flutter en domain | 2.2 ✅ RESUELTO |
 | `lib/domain/entities/network_failure.dart` | Nunca usado (código muerto) | 2.3 ✅ RESUELTO (eliminado) |

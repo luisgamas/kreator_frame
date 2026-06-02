@@ -98,7 +98,7 @@ class _AppBarWidgets extends ConsumerWidget {
             child: const Image(
               height: 65,
               width: 65,
-              image: AssetImage(Environment.iconPackageLogo),
+              image: AssetImage(AssetPaths.iconPackageLogo),
               fit: BoxFit.cover,
             ),
           ),
@@ -148,7 +148,7 @@ class _AppBarWidgets extends ConsumerWidget {
                 children: [
                   Flexible(
                     child: Text(
-                      AppLocalizations.of(context)!.byDeveloper(Environment.userDeveloperName),
+                      AppLocalizations.of(context)!.byDeveloper(EnvVars.userDeveloperName),
                       style: textStyles.bodySmall?.copyWith(
                         color: colors.onSurfaceVariant,
                       ),
@@ -156,7 +156,7 @@ class _AppBarWidgets extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (Environment.userDeveloperName == Environment.dashDeveloper) ...[
+                  if (EnvVars.userDeveloperName == AppInfo.appDeveloper) ...[
                     const Gap(AppSpacing.xxxs),
                     Icon(
                       Hicon.verifiedBold,

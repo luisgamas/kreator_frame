@@ -41,17 +41,17 @@ class AboutPackageAppScreen extends ConsumerWidget {
 
                 // * Profile header
                 ProfileHeader(
-                  imagePath: Environment.iconPackageLogo,
+                  imagePath: AssetPaths.iconPackageLogo,
                   title: packageName,
-                  subtitle: AppLocalizations.of(context)!.byDeveloper(Environment.userDeveloperName),
-                  showVerifiedBadge: Environment.userDeveloperName == Environment.dashDeveloper,
+                  subtitle: AppLocalizations.of(context)!.byDeveloper(EnvVars.userDeveloperName),
+                  showVerifiedBadge: EnvVars.userDeveloperName == AppInfo.appDeveloper,
                 ),
 
                 const Gap(AppSpacing.xl),
 
                 // * About Package App
                 Text(
-                  AppLocalizations.of(context)!.aboutPackage(Environment.userDeveloperName, packageName),
+                  AppLocalizations.of(context)!.aboutPackage(EnvVars.userDeveloperName, packageName),
                 ),
 
                 const Gap(AppSpacing.xl),
@@ -59,8 +59,8 @@ class AboutPackageAppScreen extends ConsumerWidget {
                 // * Social media links
                 SocialMediaButtonList(
                   onTwitterPressed: () {
-                    Environment.userTwitterUrl != 'NA' && Environment.userTwitterUrl != 'Error TWITTER'
-                    ? navOps.launchExternalApp(Environment.userTwitterUrl)
+                    EnvVars.userTwitterUrl != 'NA' && EnvVars.userTwitterUrl != 'Error TWITTER'
+                    ? navOps.launchExternalApp(EnvVars.userTwitterUrl)
                     : SnackbarHelpers.showError(
                       context: context,
                       message: AppLocalizations.of(context)!.errorMessage,
@@ -68,8 +68,8 @@ class AboutPackageAppScreen extends ConsumerWidget {
                     );
                   },
                   onInstagramPressed: () {
-                    Environment.userInstagramUrl != 'NA' && Environment.userInstagramUrl != 'Error INSTAGRAM'
-                    ? navOps.launchExternalApp(Environment.userInstagramUrl)
+                    EnvVars.userInstagramUrl != 'NA' && EnvVars.userInstagramUrl != 'Error INSTAGRAM'
+                    ? navOps.launchExternalApp(EnvVars.userInstagramUrl)
                     : SnackbarHelpers.showError(
                       context: context,
                       message: AppLocalizations.of(context)!.errorMessage,
@@ -77,8 +77,8 @@ class AboutPackageAppScreen extends ConsumerWidget {
                     );
                   },
                   onPersonalSitePressed: () {
-                    Environment.userPlayStoreUrl != 'NA' && Environment.userPlayStoreUrl != 'Error GOOGLE_PLAY_STORE'
-                    ? navOps.launchExternalApp(Environment.userPlayStoreUrl)
+                    EnvVars.userPlayStoreUrl != 'NA' && EnvVars.userPlayStoreUrl != 'Error GOOGLE_PLAY_STORE'
+                    ? navOps.launchExternalApp(EnvVars.userPlayStoreUrl)
                     : SnackbarHelpers.showError(
                       context: context,
                       message: AppLocalizations.of(context)!.errorMessage,

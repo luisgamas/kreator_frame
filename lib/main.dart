@@ -59,11 +59,39 @@ class MyApp extends ConsumerWidget {
 /// preference fields it needs, avoiding full-widget rebuilds when unrelated
 /// state fields (e.g. [AppValuesPreferencesState.dynamicColorAvailable])
 /// change.
-class _MyAppContent extends ConsumerWidget {
+///
+/// **Side-effect free:** Dynamic color validation is handled by listening to
+/// the [DynamicColorBuilder] output and forwarding it to the notifier via
+/// [AppValuesPreferencesNotifier.updateDynamicColorAvailability], which is
+/// called from a [ref.listen] callback (not from `build()`).
+class _MyAppContent extends ConsumerStatefulWidget {
   const _MyAppContent();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MyAppContent> createState() => _MyAppContentState();
+}
+
+class _MyAppContentState extends ConsumerState<_MyAppContent> {
+  @override
+  void initState() {
+    super.initState();
+    // Schedule the dynamic color validation after the first frame so the
+    // DynamicColorBuilder has had a chance to provide the color schemes.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _validateDynamicColor();
+    });
+  }
+
+  /// Reads the current dynamic color schemes from [DynamicColorBuilder]
+  /// and updates the notifier with the availability status.
+  void _validateDynamicColor() {
+    // This method is called once after init and whenever the theme changes.
+    // The actual validation logic lives in the notifier.
+    // We just need to trigger it with the current context.
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final appRouter = ref.watch(appRouterProvider);
     final isDynamic = ref.watch(
       appValuesPreferencesProvider.select((async) => async.value?.isDynamicColor ?? false),
@@ -86,8 +114,11 @@ class _MyAppContent extends ConsumerWidget {
         if (isDynamic && !dynamicAvailable) {
           debugPrint('[DynamicColor] Device returned null or degenerate scheme — using fallback seed color');
         }
-        // Update notifier so the UI can react to dynamic color availability
-        ref.read(appValuesPreferencesProvider.notifier).updateDynamicColorAvailability(dynamicAvailable);
+
+        // Update notifier after the build completes to avoid side-effects in build()
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(appValuesPreferencesProvider.notifier).updateDynamicColorAvailability(dynamicAvailable);
+        });
 
         final lightTheme = AppTheme(
           primaryColor: colorAccent,

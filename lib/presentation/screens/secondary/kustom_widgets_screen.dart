@@ -68,9 +68,9 @@ class KustomWidgetConfig {
   /// cellHeight = 200 (image) + 54 (text section) + 8 (Card margins) = 262dp
   static const kwgt = KustomWidgetConfig(
     widgetExtension: 'kwgt',
-    externalLink: Environment.externalLinkKWGT,
-    targetPackage: Environment.pkgKWGT,
-    editorActivity: Environment.activityKWGT,
+    externalLink: ExternalLinks.kwgtPlayStore,
+    targetPackage: KustomConfig.pkgKWGT,
+    editorActivity: KustomConfig.activityKWGT,
     cellHeight: 262,
     previewFit: BoxFit.scaleDown,
     addPadding: true,
@@ -84,9 +84,9 @@ class KustomWidgetConfig {
   /// cellHeight = 290 (image) + 54 (text section) + 8 (Card margins) = 352dp
   static const klwp = KustomWidgetConfig(
     widgetExtension: 'klwp',
-    externalLink: Environment.externalLinkKLWP,
-    targetPackage: Environment.pkgKLWP,
-    editorActivity: Environment.activityKLWP,
+    externalLink: ExternalLinks.klwpPlayStore,
+    targetPackage: KustomConfig.pkgKLWP,
+    editorActivity: KustomConfig.activityKLWP,
     cellHeight: 352,
     previewFit: BoxFit.cover,
     addPadding: false,
