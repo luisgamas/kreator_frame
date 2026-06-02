@@ -29,6 +29,11 @@ import 'package:kreator_frame/shared/utils/utils.dart';
 /// - `permissionsProvider`: Manages storage permission state.
 ///
 /// The widget uses MediaStore API for proper scoped storage support on Android 10+.
+///
+/// **Rebuild optimization:** The parent widget uses [ref.select] to observe
+/// only whether a download is active (`progressValue != null`), while the
+/// [_DownloadProgressIndicator] widget observes the exact progress value.
+/// This limits frequent progress updates to the indicator widget only.
 class WallpaperDownloadButton extends ConsumerWidget {
   final WallpaperEntity wallpaperEntity;
   final Color? iconColor;
@@ -42,12 +47,19 @@ class WallpaperDownloadButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final permissionsAsync = ref.watch(permissionsProvider);
-    final progressValue = ref.watch(downloadOperationsProvider);
+    // Use ref.select to observe only whether a download is active,
+    // avoiding full-widget rebuilds on every progress tick.
+    final isDownloading = ref.watch(
+      downloadOperationsProvider.select((progress) => progress != null),
+    );
     final colors = Theme.of(context).colorScheme;
 
     // Show progress indicator with cancel when a download is active
-    if (progressValue != null) {
-      return _buildDownloadingState(context, ref, progressValue, colors);
+    if (isDownloading) {
+      return _DownloadProgressIndicator(
+        iconColor: iconColor,
+        onCancel: () => _cancelDownload(context, ref, colors),
+      );
     }
 
     final permissions = permissionsAsync.value;
@@ -60,71 +72,6 @@ class WallpaperDownloadButton extends ConsumerWidget {
       icon: Hicon.downloadOutline,
       iconColor: iconColor ?? Colors.white,
       isLoading: false,
-    );
-  }
-
-  /// Builds the downloading state: determinate progress ring or indeterminate spinner.
-  /// Tapping the progress cancels the download.
-  Widget _buildDownloadingState(
-    BuildContext context,
-    WidgetRef ref,
-    double progressValue,
-    ColorScheme colors,
-  ) {
-    final isIndeterminate = progressValue < 0;
-
-    return Tooltip(
-      message: 'Cancel',
-      child: GestureDetector(
-        onTap: () => _cancelDownload(context, ref, colors),
-        child: SizedBox(
-          height: 48,
-          width: 48,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              if (isIndeterminate)
-                const SizedBox(
-                  height: 28,
-                  width: 28,
-                  child: CircularProgressIndicator(
-                    strokeCap: StrokeCap.round,
-                    strokeWidth: 2.5,
-                  ),
-                )
-              else ...[
-                SizedBox(
-                  height: 28,
-                  width: 28,
-                  child: CircularProgressIndicator(
-                    value: progressValue,
-                    strokeCap: StrokeCap.round,
-                    strokeWidth: 2.5,
-                  ),
-                ),
-                Text(
-                  '${(progressValue * 100).toStringAsFixed(0)}%',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-              // Cancel icon overlay in top-right
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Icon(
-                  Icons.close,
-                  size: 14,
-                  color: iconColor?.withValues(alpha: 0.7) ?? Colors.white70,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -171,5 +118,80 @@ class WallpaperDownloadButton extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+/// Displays the download progress ring with cancel capability.
+///
+/// This widget observes [downloadOperationsProvider] directly to get the
+/// exact progress value, isolating frequent progress updates from the
+/// parent [WallpaperDownloadButton].
+class _DownloadProgressIndicator extends ConsumerWidget {
+  final Color? iconColor;
+  final VoidCallback onCancel;
+
+  const _DownloadProgressIndicator({
+    required this.iconColor,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final progressValue = ref.watch(downloadOperationsProvider);
+    final isIndeterminate = (progressValue ?? -1) < 0;
+
+    return Tooltip(
+      message: 'Cancel',
+      child: GestureDetector(
+        onTap: onCancel,
+        child: SizedBox(
+          height: 48,
+          width: 48,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (isIndeterminate)
+                const SizedBox(
+                  height: 28,
+                  width: 28,
+                  child: CircularProgressIndicator(
+                    strokeCap: StrokeCap.round,
+                    strokeWidth: 2.5,
+                  ),
+                )
+              else ...[
+                SizedBox(
+                  height: 28,
+                  width: 28,
+                  child: CircularProgressIndicator(
+                    value: progressValue,
+                    strokeCap: StrokeCap.round,
+                    strokeWidth: 2.5,
+                  ),
+                ),
+                Text(
+                  '${((progressValue ?? 0) * 100).toStringAsFixed(0)}%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+              // Cancel icon overlay in top-right
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Icon(
+                  Icons.close,
+                  size: 14,
+                  color: iconColor?.withValues(alpha: 0.7) ?? Colors.white70,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

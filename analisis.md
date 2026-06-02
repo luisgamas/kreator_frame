@@ -7,7 +7,7 @@
 >
 > Fecha: 2026-05-30
 >
-> Última actualización: 2026-06-01 — Bug 3.5 (KeyValueStorageServicesImpl sin DI) resuelto mediante `keyValueStorageProvider` inyectado via Riverpod. Domain layer libre de dependencias Flutter UI y todas las dependencias ahora siguen el patrón DI explícito.
+> Última actualización: 2026-06-01 — Bugs 5.1 (MyApp ref.select) y 5.2 (WallpaperDownloadButton rebuilds) resueltos mediante extracción de widgets y uso de ref.select() para optimizar rebuilds.
 
 ---
 
@@ -49,8 +49,8 @@
 | 4.3 ColorPaletteExtractor dispose | ✅ RESUELTO | `93b3fdd` |
 | 4.5 DonationBanner UniqueKey | ✅ INTENCIONAL | — |
 | 4.6 SharedPreferences caching | ✅ RESUELTO | `ae15640` |
-| 5.1 MyApp ref.select | ⏭️ OMITIDO | impacto bajo |
-| 5.2 WallpaperDownloadButton rebuilds | ⏭️ OMITIDO | impacto menor |
+| 5.1 MyApp ref.select | ✅ RESUELTO | (ver sección 5.1) |
+| 5.2 WallpaperDownloadButton rebuilds | ✅ RESUELTO | (ver sección 5.2) |
 | 5.3 keepAlive providers | ✅ CORRECTO | — |
 | 6.1 Acceso directo repository | ✅ RESUELTO | (ver sección 6.1) |
 | 6.2 Environment responsabilidades | ⏭️ OMITIDO | mantenibilidad |
@@ -768,11 +768,11 @@ class KeyValueStorageServicesImpl extends KeyValueStorageServices {
 
 ## 5. Rendimiento y rebuilds innecesarios
 
-### 5.1 🟡 `MyApp` se reconstruye con cualquier cambio de preferencia ⏭️ OMITIDO (impacto bajo, cambios de tema son infrecuentes)
+### 5.1 🟡 `MyApp` se reconstruye con cualquier cambio de preferencia ✅ RESUELTO (2026-06-01)
 
 **Archivo:** `lib/main.dart`
 
-**Problema:**
+**Problema original:**
 ```dart
 class MyApp extends ConsumerWidget {
   @override
@@ -786,43 +786,144 @@ class MyApp extends ConsumerWidget {
 
 Cuando el usuario cambia solo el color de acento, también se reconstruyen el tema, el router, y todo el árbol de widgets hijo.
 
-**Posible mejora:**
-Usar `ref.select()` para observar solo los campos necesarios:
-
+**Análisis de la sugerencia original:**
+La sugerencia proponía usar `ref.select()` directamente en el estado:
 ```dart
 final themeMode = ref.watch(appValuesPreferencesProvider.select((s) => s.themeModeForApp));
-final colorAccent = ref.watch(appValuesPreferencesProvider.select((s) => s.colorAccentForTheme));
-final isDynamic = ref.watch(appValuesPreferencesProvider.select((s) => s.isDynamicColor));
 ```
 
-**Relaciones:**
-- `AppValuesPreferencesState` — no cambia
-- `AppTheme` — recibe los valores individuales
-- No rompe funcionalidad, mejora rendimiento
+Sin embargo, esto es **incorrecto** porque `appValuesPreferencesProvider` es un `AsyncNotifierProvider`, no un `NotifierProvider`. El `ref.watch()` devuelve un `AsyncValue<AppValuesPreferencesState>`, no el estado directamente. Además, `appValuesAsync.when()` necesita el `AsyncValue` completo para manejar loading/error/data.
+
+**Solución aplicada (siguiendo `flutter-riverpod-expert`):**
+
+1. **Separación de responsabilidades** — `MyApp` maneja el ciclo de vida del `AsyncValue` (loading/error/data) y delega el contenido real a `_MyAppContent`:
+
+```dart
+class MyApp extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appValuesAsync = ref.watch(appValuesPreferencesProvider);
+
+    return appValuesAsync.when(
+      loading: () => const MaterialApp(...),
+      error: (_, _) => const MaterialApp(...),
+      data: (_) => const _MyAppContent(),
+    );
+  }
+}
+```
+
+2. **`ref.select()` para campos específicos** — `_MyAppContent` usa `ref.select()` para observar solo los campos que necesita, evitando rebuilds cuando campos no relacionados cambian (ej: `dynamicColorAvailable`):
+
+```dart
+class _MyAppContent extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appRouter = ref.watch(appRouterProvider);
+    final isDynamic = ref.watch(
+      appValuesPreferencesProvider.select((async) => async.value?.isDynamicColor ?? false),
+    );
+    final colorAccent = ref.watch(
+      appValuesPreferencesProvider.select((async) => async.value?.colorAccentForTheme ?? AppConstants.accentColors[4]),
+    );
+    final themeMode = ref.watch(
+      appValuesPreferencesProvider.select((async) => async.value?.themeModeForApp ?? ThemeMode.system),
+    );
+    ...
+  }
+}
+```
+
+**Resultado:**
+- `_MyAppContent` solo se reconstruye cuando `isDynamicColor`, `colorAccentForTheme` o `themeModeForApp` cambian.
+- Cambios en `dynamicColorAvailable` o `minimalViewForGrids` no reconstruyen el MaterialApp.
+- El manejo de loading/error se preserva en `MyApp`.
+- `flutter analyze` y `flutter test` (25/25) pasan sin issues.
+- No se rompe la funcionalidad: el tema, el router y la configuración siguen funcionando igual.
 
 ---
 
-### 5.2 🟡 `WallpaperDownloadButton` — rebuilds frecuentes durante descarga ⏭️ OMITIDO (progreso visible es intencional, impacto menor)
+### 5.2 🟡 `WallpaperDownloadButton` — rebuilds frecuentes durante descarga ✅ RESUELTO (2026-06-01)
 
 **Archivo:** `lib/presentation/widgets/buttons/wallpaper_download_button.dart`
 
-**Problema:**
-Durante una descarga, el callback `onProgressUpdate` actualiza `progressDownloaderProvider` con cada chunk recibido. Cada actualización reconstruye el botón y cualquier otro widget que observe ese provider.
-
-**Posible mejora:**
-- Usar `ref.select()` en los widgets que solo necesitan saber si está descargando (boolean)
-- Separar el progreso detallado del estado de "descargando/no descargando"
-
+**Problema original:**
 ```dart
-// En el widget:
-final isDownloading = ref.watch(progressDownloaderProvider.select((p) => p != null));
-final progressValue = ref.watch(progressDownloaderProvider); // Solo si se necesita el valor
+class WallpaperDownloadButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final progressValue = ref.watch(downloadOperationsProvider);
+    // ↑ Cada tick de progreso reconstruye TODO el widget, incluyendo
+    //   la lógica de permisos y el botón de descarga
+    ...
+  }
+}
 ```
 
-**Relaciones:**
-- `progressDownloaderProvider` — no cambia su API
-- `WallpaperDownloadButton` — solo cambia la suscripción
-- Otros widgets que observen el provider — pueden usar select también
+Durante una descarga, el callback `onProgressUpdate` actualiza `downloadOperationsProvider` con cada chunk recibido. Cada actualización reconstruye el botón y cualquier otro widget que observe ese provider.
+
+**Análisis de la sugerencia original:**
+La sugerencia proponía usar `ref.select()` para observar solo si está descargando (boolean):
+```dart
+final isDownloading = ref.watch(progressDownloaderProvider.select((p) => p != null));
+```
+
+Esto es **parcialmente correcto** pero incompleto: el widget necesita el valor de progreso para mostrar el indicador visual. No se puede usar `ref.select()` para eliminar el progreso sin perder la funcionalidad.
+
+**Solución aplicada (siguiendo `flutter-riverpod-expert`):**
+
+1. **`ref.select()` en el widget padre** — `WallpaperDownloadButton` solo observa si hay una descarga activa, no el valor de progreso:
+
+```dart
+class WallpaperDownloadButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final permissionsAsync = ref.watch(permissionsProvider);
+    // Use ref.select to observe only whether a download is active,
+    // avoiding full-widget rebuilds on every progress tick.
+    final isDownloading = ref.watch(
+      downloadOperationsProvider.select((progress) => progress != null),
+    );
+    final colors = Theme.of(context).colorScheme;
+
+    if (isDownloading) {
+      return _DownloadProgressIndicator(
+        iconColor: iconColor,
+        onCancel: () => _cancelDownload(context, ref, colors),
+      );
+    }
+    ...
+  }
+}
+```
+
+2. **Widget separado para el indicador de progreso** — `_DownloadProgressIndicator` observa el valor exacto de progreso, aislando los rebuilds frecuentes:
+
+```dart
+class _DownloadProgressIndicator extends ConsumerWidget {
+  final Color? iconColor;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final progressValue = ref.watch(downloadOperationsProvider);
+    final isIndeterminate = (progressValue ?? -1) < 0;
+    // ... render progress ring with percentage
+  }
+}
+```
+
+**Mejoras incluidas:**
+- **Rebuilds aislados**: los ticks de progreso solo reconstruyen `_DownloadProgressIndicator`, no el widget padre con su lógica de permisos.
+- **Separación de responsabilidades**: el indicador de progreso es un widget independiente con su propia lógica de renderizado.
+- **API preservada**: la interfaz pública de `WallpaperDownloadButton` no cambia; los consumidores no necesitan modificarse.
+- **Cancel callback**: el callback `onCancel` se pasa como parámetro, manteniendo el desacoplamiento entre el indicador y la lógica de cancelación.
+
+**Resultado:**
+- Los rebuilds frecuentes durante la descarga solo afectan al `_DownloadProgressIndicator`.
+- `WallpaperDownloadButton` solo se reconstruye cuando `isDownloading` cambia (inicio/fin de descarga).
+- `flutter analyze` y `flutter test` (25/25) pasan sin issues.
+- No se rompe la funcionalidad: el indicador de progreso, la cancelación y los snackbars siguen funcionando igual.
 
 ---
 

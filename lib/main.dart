@@ -26,17 +26,13 @@ void main() async {
 
 /// Root widget of the Kreator Frame application.
 ///
-/// Configures the MaterialApp with:
-/// - Localization support (English and Spanish)
-/// - Go Router navigation
-/// - Dynamic theming (light/dark modes with custom accent colors)
-/// - Material You dynamic color support
-/// - State management via Riverpod providers
+/// Handles the [AsyncValue] lifecycle (loading / error / data) and delegates
+/// the actual MaterialApp configuration to [_MyAppContent], which uses
+/// [ref.select] to rebuild only when the specific preference fields change.
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final appRouter = ref.watch(appRouterProvider);
     final appValuesAsync = ref.watch(appValuesPreferencesProvider);
 
     return appValuesAsync.when(
@@ -54,42 +50,62 @@ class MyApp extends ConsumerWidget {
           ),
         ),
       ),
-      data: (appValuesFromPreference) {
-        return DynamicColorBuilder(
-          builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-            final isDynamic = appValuesFromPreference.isDynamicColor;
+      data: (_) => const _MyAppContent(),
+    );
+  }
+}
 
-            // Validate dynamic color schemes — fall back to seed on Samsung/Xiaomi bugs
-            final validatedLight = isDynamic ? DynamicColorValidator.validate(lightDynamic) : null;
-            final validatedDark = isDynamic ? DynamicColorValidator.validate(darkDynamic) : null;
+/// Builds the actual [MaterialApp] using [ref.select] to observe only the
+/// preference fields it needs, avoiding full-widget rebuilds when unrelated
+/// state fields (e.g. [AppValuesPreferencesState.dynamicColorAvailable])
+/// change.
+class _MyAppContent extends ConsumerWidget {
+  const _MyAppContent();
 
-            // Track whether dynamic colors actually loaded for the UI
-            final dynamicAvailable = validatedLight != null || validatedDark != null;
-            if (isDynamic && !dynamicAvailable) {
-              debugPrint('[DynamicColor] Device returned null or degenerate scheme — using fallback seed color');
-            }
-            // Update notifier so the UI can react to dynamic color availability
-            ref.read(appValuesPreferencesProvider.notifier).updateDynamicColorAvailability(dynamicAvailable);
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appRouter = ref.watch(appRouterProvider);
+    final isDynamic = ref.watch(
+      appValuesPreferencesProvider.select((async) => async.value?.isDynamicColor ?? false),
+    );
+    final colorAccent = ref.watch(
+      appValuesPreferencesProvider.select((async) => async.value?.colorAccentForTheme ?? AppConstants.accentColors[4]),
+    );
+    final themeMode = ref.watch(
+      appValuesPreferencesProvider.select((async) => async.value?.themeModeForApp ?? ThemeMode.system),
+    );
 
-            final lightTheme = AppTheme(
-              primaryColor: appValuesFromPreference.colorAccentForTheme,
-              dynamicColorScheme: validatedLight,
-            );
+    return DynamicColorBuilder(
+      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        // Validate dynamic color schemes — fall back to seed on Samsung/Xiaomi bugs
+        final validatedLight = isDynamic ? DynamicColorValidator.validate(lightDynamic) : null;
+        final validatedDark = isDynamic ? DynamicColorValidator.validate(darkDynamic) : null;
 
-            final darkTheme = AppTheme(
-              primaryColor: appValuesFromPreference.colorAccentForTheme,
-              dynamicColorScheme: validatedDark,
-            );
+        // Track whether dynamic colors actually loaded for the UI
+        final dynamicAvailable = validatedLight != null || validatedDark != null;
+        if (isDynamic && !dynamicAvailable) {
+          debugPrint('[DynamicColor] Device returned null or degenerate scheme — using fallback seed color');
+        }
+        // Update notifier so the UI can react to dynamic color availability
+        ref.read(appValuesPreferencesProvider.notifier).updateDynamicColorAvailability(dynamicAvailable);
 
-            return MaterialApp.router(
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
-              routerConfig: appRouter,
-              themeMode: appValuesFromPreference.themeModeForApp,
-              theme: lightTheme.lightTheme,
-              darkTheme: darkTheme.darkTheme,
-            );
-          },
+        final lightTheme = AppTheme(
+          primaryColor: colorAccent,
+          dynamicColorScheme: validatedLight,
+        );
+
+        final darkTheme = AppTheme(
+          primaryColor: colorAccent,
+          dynamicColorScheme: validatedDark,
+        );
+
+        return MaterialApp.router(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: appRouter,
+          themeMode: themeMode,
+          theme: lightTheme.lightTheme,
+          darkTheme: darkTheme.darkTheme,
         );
       },
     );
