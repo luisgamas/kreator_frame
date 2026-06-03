@@ -3,6 +3,6 @@ class AppInfo {
   AppInfo._();
 
   static const String appName = 'Kreator Frame';
-  static const String appVersion = '1.6.0';
+  static const String appVersion = '1.6.2';
   static const String appDeveloper = 'Luis Gamas';
 }

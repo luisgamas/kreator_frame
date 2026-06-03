@@ -1,8 +1,8 @@
-- Fixed Android wallpaper picker and chooser crashes on Xiaomi and custom Android ROMs
-- Eliminated theme flash, memory leaks, and race conditions on app startup
-- Faster wallpaper preview with progressive high-resolution image loading
-- Improved memory management for wallpaper previews and color extraction
-- Smoother navigation with optimized widget rebuilds using ref.select()
+- Fixed wallpaper picker/chooser crashes on Xiaomi and custom ROMs
+- Fixed theme flash, memory leaks, and race conditions on startup
+- Faster wallpaper preview with progressive high-resolution loading
+- Improved memory management for previews and color extraction
+- Smoother navigation with ref.select() rebuilds
 - Enhanced state management following Riverpod 3.x best practices
-- Refactored Environment class into focused, single-responsibility constants
+- Refactored Environment into focused constants
 - General stability, performance, and code quality improvements

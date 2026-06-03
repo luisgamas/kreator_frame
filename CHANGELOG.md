@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [v1.6.1] - 2026-06-02
+
+### Fixed
+- **Release notes exceed Google Play 500-char limit per language**: Trimmed `.github/whatsnew/whatsnew-en-US` (588 -> 490 chars) and `whatsnew-es-ES` (657 -> 481 chars) so the `Deploy AAB to Google Play` workflow can upload them via the Google Play API.
+
+---
+
 ## [v1.6.0] - 2026-06-02
 
 ### Fixed
