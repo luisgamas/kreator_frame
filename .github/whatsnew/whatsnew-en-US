@@ -1,6 +1,7 @@
-- Migrated external links to a new custom domain for better reliability.
-- Optimized network timeouts and error handling for a smoother wallpaper browsing experience.
-- Adjusted UI consistency by refining button dimensions in the settings screen.
-- Improved storage permissions for enhanced privacy.
-- Support for Material You dynamic colors.
-- Modernized interface with Material Design 3.
+- Fixed crashes when applying wallpapers on Xiaomi and other Android devices
+- Eliminated startup crash on unsupported devices
+- Removed theme flash on app start for a seamless look
+- Faster wallpaper preview loading with optimized memory usage
+- Smoother scrolling, navigation and overall performance
+- Fixed memory leaks for better battery life
+- General stability and reliability improvements
