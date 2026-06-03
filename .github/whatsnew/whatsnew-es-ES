@@ -1,7 +1,8 @@
-- Corregidos fallos al aplicar fondos de pantalla en dispositivos Xiaomi
-- Eliminado el bloqueo al inicio en dispositivos no compatibles
-- Eliminado el destello de tema al iniciar la app
-- Vista previa de fondos más rápida con menor uso de memoria
-- Navegación más fluida y rendimiento general mejorado
-- Corregidas fugas de memoria para mejor duración de batería
-- Experiencia general más estable y confiable
+- Corregidos fallos del selector de fondos de pantalla en Xiaomi y ROMs Android personalizados
+- Eliminados destellos de tema, fugas de memoria y condiciones de carrera al iniciar la app
+- Vista previa de fondos más rápida con carga progresiva en alta resolución
+- Mejor gestión de memoria para vistas previas y extracción de colores
+- Navegación más fluida con reconstrucciones de widgets optimizadas mediante ref.select()
+- Gestión de estado mejorada siguiendo prácticas recomendadas de Riverpod 3.x
+- Refactorizada la clase Environment en constantes enfocadas con responsabilidad única
+- Mejoras generales de estabilidad, rendimiento y calidad de código

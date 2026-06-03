@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [v1.6.0] - 2026-06-02
+
 ### Fixed
 - **Android native wallpaper picker & chooser permission issues on Xiaomi**: Explicitly granted read URI permissions to resolving packages for `getCropAndSetWallpaperIntent` and `ACTION_ATTACH_DATA` in `WallpapersNativeServices.kt`. Prevents `SecurityException` crashes on customized Android ROMs like MIUI/HyperOS.
 - **MainActivity platform method crash**: Added safety try-catch blocks inside the Main Looper Handler post block in `MainActivity.kt` to handle launch exceptions safely and avoid crashing the app on unsupported devices.
