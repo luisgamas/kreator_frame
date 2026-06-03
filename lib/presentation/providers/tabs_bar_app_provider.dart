@@ -1,17 +1,18 @@
-// 🐦 Flutter imports:
-import 'package:flutter/material.dart';
-
 // 📦 Package imports:
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // 🌎 Project imports:
 import 'package:kreator_frame/config/config.dart';
+import 'package:kreator_frame/config/constants/env_vars.dart';
 import 'package:kreator_frame/domain/domain.dart';
 import 'package:kreator_frame/presentation/providers/repository_provider.dart';
-import 'package:kreator_frame/presentation/screens/screens.dart';
+import 'package:kreator_frame/presentation/screens/secondary/kustom_widgets_screen.dart';
 
 /// Notifier that manages the application's tab list.
-/// Dynamically creates tabs based on available widgets and wallpapers.
+///
+/// Emits pure domain [TabBarEntity] data so the domain layer stays free
+/// of Flutter UI types. The presentation layer is responsible for mapping
+/// each entity into a concrete widget.
 class TabsBarAppNotifier extends AsyncNotifier<List<TabBarEntity>> {
   @override
   Future<List<TabBarEntity>> build() async {
@@ -19,32 +20,32 @@ class TabsBarAppNotifier extends AsyncNotifier<List<TabBarEntity>> {
     final repository = ref.watch(repositoryProvider);
     final kwgt = await repository.getListOfWidgets('kwgt', 'preset_thumb_portrait.jpg');
     final klwp = await repository.getListOfWidgets('klwp', 'preset_thumb_portrait.jpg');
-    List<TabBarEntity> tabList = [];
+    final List<TabBarEntity> tabList = [];
 
     if (kwgt.isNotEmpty) {
       tabList.add(
-        TabBarEntity(
-          tabBarView: const KustomWidgetsScreen(config: KustomWidgetConfig.kwgt),
-          tabBar: Tab(text: KustomWidgetConfig.kwgt.tabLabel),
+        const TabBarEntity(
+          type: TabBarType.kustomWidget,
+          label: KustomWidgetConfig.kwgtTabLabel,
         ),
       );
     }
 
     if (klwp.isNotEmpty) {
       tabList.add(
-        TabBarEntity(
-          tabBarView: const KustomWidgetsScreen(config: KustomWidgetConfig.klwp),
-          tabBar: Tab(text: KustomWidgetConfig.klwp.tabLabel),
+        const TabBarEntity(
+          type: TabBarType.kustomLiveWallpaper,
+          label: KustomWidgetConfig.klwpTabLabel,
         ),
       );
     }
 
-    if (Environment.userWallpapersUrl != 'NA' &&
-        Environment.userWallpapersUrl != 'Error WALLPAPERS_URL') {
+    if (EnvVars.userWallpapersUrl != 'NA' &&
+        EnvVars.userWallpapersUrl != 'Error WALLPAPERS_URL') {
       tabList.add(
-        TabBarEntity(
-          tabBarView: const WallpapersScreen(),
-          tabBar: const Tab(text: 'WALLPAPERS'),
+        const TabBarEntity(
+          type: TabBarType.wallpapers,
+          label: 'WALLPAPERS',
         ),
       );
     }

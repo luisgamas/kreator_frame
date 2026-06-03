@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // 🌎 Project imports:
-import 'package:kreator_frame/config/constants/environment.dart';
+import 'package:kreator_frame/config/constants/storage_keys.dart';
+import 'package:kreator_frame/domain/domain.dart';
+import 'package:kreator_frame/presentation/providers/repository_provider.dart';
 import 'package:kreator_frame/shared/services/services.dart';
 import 'package:kreator_frame/shared/utils/utils.dart';
 
@@ -13,33 +15,41 @@ import 'package:kreator_frame/shared/utils/utils.dart';
 /// State that holds user preferences for app appearance and behavior.
 ///
 /// Stores:
-/// - Theme mode (light, dark, system)
+/// - Theme mode option (system, light, dark) as a pure domain enum
 /// - Accent color for the theme
 /// - Dynamic color (Material You) toggle
+/// - Whether dynamic colors are actually available on this device
 /// - Grid view preferences (currently unused)
 class AppValuesPreferencesState {
   final Color colorAccentForTheme;
-  final ThemeMode themeModeForApp;
+  final ThemeModeOption themeModeOption;
   final bool isDynamicColor;
+  final bool dynamicColorAvailable;
   final bool minimalViewForGrids;
 
   AppValuesPreferencesState({
     Color? colorAccentForTheme,
-    ThemeMode? themeModeForApp,
+    ThemeModeOption? themeModeOption,
     this.isDynamicColor = false,
+    this.dynamicColorAvailable = false,
     this.minimalViewForGrids = false,
   })  : colorAccentForTheme = colorAccentForTheme ?? AppConstants.accentColors[4],
-        themeModeForApp = themeModeForApp ?? AppConstants.themeModeOptions[0].themeMode;
+        themeModeOption = themeModeOption ?? ThemeModeOption.system;
+
+  /// Maps the domain [themeModeOption] to Flutter's [ThemeMode] for MaterialApp.
+  ThemeMode get themeModeForApp => AppConstants.themeModeFromOption(themeModeOption);
 
   AppValuesPreferencesState copyWith({
     Color? colorAccentForTheme,
-    ThemeMode? themeModeForApp,
+    ThemeModeOption? themeModeOption,
     bool? isDynamicColor,
+    bool? dynamicColorAvailable,
     bool? minimalViewForGrids,
   }) => AppValuesPreferencesState(
     colorAccentForTheme: colorAccentForTheme ?? this.colorAccentForTheme,
-    themeModeForApp: themeModeForApp ?? this.themeModeForApp,
+    themeModeOption: themeModeOption ?? this.themeModeOption,
     isDynamicColor: isDynamicColor ?? this.isDynamicColor,
+    dynamicColorAvailable: dynamicColorAvailable ?? this.dynamicColorAvailable,
     minimalViewForGrids: minimalViewForGrids ?? this.minimalViewForGrids,
   );
 
@@ -51,81 +61,93 @@ class AppValuesPreferencesState {
 /// Loads preferences from persistent storage on initialization and provides
 /// methods to update theme mode and accent color. All changes are automatically
 /// persisted to SharedPreferences.
-class AppValuesPreferencesNotifier extends Notifier<AppValuesPreferencesState> {
-  late final KeyValueStorageServices _keyValueStorageServices;
-
+class AppValuesPreferencesNotifier extends AsyncNotifier<AppValuesPreferencesState> {
   @override
-  AppValuesPreferencesState build() {
-    _keyValueStorageServices = KeyValueStorageServicesImpl();
-    _updateStateFromPreferences();
-    return AppValuesPreferencesState();
+  Future<AppValuesPreferencesState> build() async {
+    final keyValueStorageServices = ref.watch(keyValueStorageProvider);
+    return _loadPreferences(keyValueStorageServices);
   }
 
-  void _updateStateFromPreferences() async {
-    final indexColorAccent = await _keyValueStorageServices.getKeyValue<int>(Environment.keyColorTheme) ?? 4;
-    final indexThemeMode = await _keyValueStorageServices.getKeyValue<String>(Environment.keyThemeMode);
-    // final showMinimalGridView = await keyValueStorageServices.getKeyValue<bool>(Environment.keyMinimalGrid);
+  Future<AppValuesPreferencesState> _loadPreferences(
+    KeyValueStorageServices keyValueStorageServices,
+  ) async {
+    final indexColorAccent = await keyValueStorageServices.getKeyValue<int>(StorageKeys.keyColorTheme) ?? 4;
+    final indexThemeMode = await keyValueStorageServices.getKeyValue<String>(StorageKeys.keyThemeMode);
 
-    final themeMode = switch (indexThemeMode) {
-      'system' => AppConstants.themeModeOptions[0].themeMode,
-      'light' => AppConstants.themeModeOptions[1].themeMode,
-      'dark' => AppConstants.themeModeOptions[2].themeMode,
-      _ => ThemeMode.system,
+    final themeModeOption = switch (indexThemeMode) {
+      'system' => ThemeModeOption.system,
+      'light' => ThemeModeOption.light,
+      'dark' => ThemeModeOption.dark,
+      _ => ThemeModeOption.system,
     };
 
     if (indexColorAccent == -1) {
-      state = state.copyWith(
+      return AppValuesPreferencesState(
         isDynamicColor: true,
-        themeModeForApp: themeMode,
+        themeModeOption: themeModeOption,
       );
     } else {
       final clampedIndex = (indexColorAccent >= 0 && indexColorAccent < AppConstants.accentColors.length)
           ? indexColorAccent
           : 4;
-      state = state.copyWith(
+      return AppValuesPreferencesState(
         isDynamicColor: false,
         colorAccentForTheme: AppConstants.accentColors[clampedIndex],
-        themeModeForApp: themeMode,
-        // minimalViewForGrids: showMinimalGridView ?? false,
+        themeModeOption: themeModeOption,
       );
     }
   }
 
-  void setPreferenceForThemeMode(ThemeMode themeMode) async {
-    await _keyValueStorageServices.setKeyValue(Environment.keyThemeMode, themeMode.name);
-    if (themeMode != state.themeModeForApp) {
-      state = state.copyWith(
-        themeModeForApp: themeMode
-      );
+  Future<void> setPreferenceForThemeMode(ThemeModeOption option) async {
+    final currentState = state.value;
+    if (currentState == null) return;
+
+    final keyValueStorageServices = ref.read(keyValueStorageProvider);
+    await keyValueStorageServices.setKeyValue(StorageKeys.keyThemeMode, option.name);
+    if (!ref.mounted) return;
+    if (option != currentState.themeModeOption) {
+      state = AsyncData(currentState.copyWith(themeModeOption: option));
     }
   }
 
-  void setPreferenceForColorAccent(Color color) async {
+  Future<void> setPreferenceForColorAccent(Color color) async {
+    final currentState = state.value;
+    if (currentState == null) return;
+
     final colorIndex = AppConstants.accentColors.indexOf(color);
-    await _keyValueStorageServices.setKeyValue(Environment.keyColorTheme, colorIndex);
-    state = state.copyWith(
+    final keyValueStorageServices = ref.read(keyValueStorageProvider);
+    await keyValueStorageServices.setKeyValue(StorageKeys.keyColorTheme, colorIndex);
+    if (!ref.mounted) return;
+    state = AsyncData(currentState.copyWith(
       colorAccentForTheme: color,
       isDynamicColor: false,
-    );
+    ));
   }
 
-  void setPreferenceForDynamicColor() async {
-    await _keyValueStorageServices.setKeyValue(Environment.keyColorTheme, -1);
-    state = state.copyWith(isDynamicColor: true);
+  Future<void> setPreferenceForDynamicColor() async {
+    final currentState = state.value;
+    if (currentState == null) return;
+
+    final keyValueStorageServices = ref.read(keyValueStorageProvider);
+    await keyValueStorageServices.setKeyValue(StorageKeys.keyColorTheme, -1);
+    if (!ref.mounted) return;
+    state = AsyncData(currentState.copyWith(isDynamicColor: true));
   }
 
-  /* void toggleMinimalViewForGrids() async {
-    final newValueForMinimalGrids = !state.minimalViewForGrids;
-    await keyValueStorageServices.setKeyValue(Environment.keyMinimalGrid, newValueForMinimalGrids);
-    state = state.copyWith(minimalViewForGrids: newValueForMinimalGrids);
-  } */
-
-
+  /// Updates whether dynamic colors actually loaded on this device.
+  /// Called from main.dart after DynamicColorBuilder provides the schemes.
+  void updateDynamicColorAvailability(bool available) {
+    final currentState = state.value;
+    if (currentState == null) return;
+    if (currentState.dynamicColorAvailable != available) {
+      state = AsyncData(currentState.copyWith(dynamicColorAvailable: available));
+    }
+  }
 }
 
 // * PROVIDER
 /// Provider that exposes user preference state and management functionality.
 /// The state persists across app restarts using SharedPreferences.
-final appValuesPreferencesProvider = NotifierProvider<AppValuesPreferencesNotifier, AppValuesPreferencesState>(
+final appValuesPreferencesProvider = AsyncNotifierProvider<AppValuesPreferencesNotifier, AppValuesPreferencesState>(
   AppValuesPreferencesNotifier.new,
 );

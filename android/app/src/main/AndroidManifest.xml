@@ -92,6 +92,11 @@
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="https" />
         </intent>
+        <!-- Kustom apps queries for package visibility -->
+        <package android:name="org.kustom.widget" />
+        <package android:name="org.kustom.wallpaper" />
+        <package android:name="org.kustom.lockscreen" />
+        <package android:name="org.kustom.watchface" />
     </queries>
 
 </manifest>

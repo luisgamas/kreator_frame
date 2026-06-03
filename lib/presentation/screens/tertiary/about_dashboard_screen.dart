@@ -16,8 +16,8 @@ class AboutDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final repository = ref.watch(repositoryProvider);
     final textStyles = Theme.of(context).textTheme;
+    final navOps = ref.watch(externalNavigationProvider.notifier);
 
     // * Widget view
     return Scaffold(
@@ -36,8 +36,8 @@ class AboutDashboardScreen extends ConsumerWidget {
               delegate: SliverChildListDelegate([
                 // * Profile header
                 const ProfileHeader(
-                  imagePath: Environment.iconDashboardLogo,
-                  title: Environment.dashName,
+                  imagePath: AssetPaths.iconDashboardLogo,
+                  title: AppInfo.appName,
                   subtitle: 'Dashboard',
                   showVerifiedBadge: true,
                 ),
@@ -53,9 +53,12 @@ class AboutDashboardScreen extends ConsumerWidget {
 
                 // * Social media links
                 SocialMediaButtonList(
-                  onTwitterPressed: () => repository.launchExternalApp(Environment.externalLinkTwitter),
-                  onInstagramPressed: () => repository.launchExternalApp(Environment.externalLinkInstagram),
-                  onPersonalSitePressed: () => repository.launchExternalApp(Environment.externalLinkWebsite),
+                  onTwitterPressed: () =>
+                      navOps.launchExternalApp(ExternalLinks.twitter),
+                  onInstagramPressed: () =>
+                      navOps.launchExternalApp(ExternalLinks.instagram),
+                  onPersonalSitePressed: () =>
+                      navOps.launchExternalApp(ExternalLinks.website),
                 ),
 
                 const Gap(AppSpacing.xl),

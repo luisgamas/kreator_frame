@@ -10,7 +10,7 @@ This project adheres to the Contributor Covenant [Code of Conduct](CODE_OF_CONDU
 
 ### Reporting Bugs
 
-Before creating a bug report, check the [issue tracker](https://github.com/LuisGamas/kreator_frame/issues) to avoid duplicates.
+Before creating a bug report, check the [issue tracker](https://github.com/luisgamas/kreator_frame/issues) to avoid duplicates.
 
 When filing a bug report, include:
 - **Clear description**: What behavior did you expect? What actually happened?
@@ -19,16 +19,16 @@ When filing a bug report, include:
 - **Screenshots/logs**: Visual evidence or error messages (if applicable)
 - **Frequency**: Does it happen consistently or intermittently?
 
-Use the [Bug Report template](https://github.com/LuisGamas/kreator_frame/issues/new?template=bug_report.md) when creating an issue.
+Use the [Bug Report template](https://github.com/luisgamas/kreator_frame/issues/new?template=bug_report.md) when creating an issue.
 
 ### Suggesting Features
 
 Feature suggestions are welcome! Before proposing a feature:
-- Check existing [issues](https://github.com/LuisGamas/kreator_frame/issues) and [pull requests](https://github.com/LuisGamas/kreator_frame/pulls)
+- Check existing [issues](https://github.com/luisgamas/kreator_frame/issues) and [pull requests](https://github.com/luisgamas/kreator_frame/pulls)
 - Provide clear use cases for the feature
 - Consider scope: Does it align with Kreator Frame's goals (Kustom widget/wallpaper dashboard)?
 
-Use the [Feature Request template](https://github.com/LuisGamas/kreator_frame/issues/new?template=feature_request.md).
+Use the [Feature Request template](https://github.com/luisgamas/kreator_frame/issues/new?template=feature_request.md).
 
 ### Submitting Code Changes
 
@@ -49,7 +49,7 @@ Use the [Feature Request template](https://github.com/LuisGamas/kreator_frame/is
    ```
 3. Add upstream remote:
    ```bash
-   git remote add upstream https://github.com/LuisGamas/kreator_frame.git
+   git remote add upstream https://github.com/luisgamas/kreator_frame.git
    ```
 4. Install dependencies:
    ```bash
@@ -98,7 +98,7 @@ Use the [Feature Request template](https://github.com/LuisGamas/kreator_frame/is
    ```
 
 6. **Create a Pull Request**:
-   - Go to [Pull Requests](https://github.com/LuisGamas/kreator_frame/pulls)
+   - Go to [Pull Requests](https://github.com/luisgamas/kreator_frame/pulls)
    - Click "New Pull Request"
    - Select `main` as base branch
    - Fill out the PR template with:
@@ -238,8 +238,8 @@ final myProvider = NotifierProvider<MyNotifier, MyState>(MyNotifier.new);
 
 ## Questions?
 
-- Open a [Discussion](https://github.com/LuisGamas/kreator_frame/discussions) for questions
-- Check [Issues](https://github.com/LuisGamas/kreator_frame/issues) for similar problems
+- Open a [Discussion](https://github.com/luisgamas/kreator_frame/discussions) for questions
+- Check [Issues](https://github.com/luisgamas/kreator_frame/issues) for similar problems
 - Review [CHANGELOG.md](CHANGELOG.md) for project history
 
 ## License

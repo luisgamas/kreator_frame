@@ -17,8 +17,8 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final packageAppInfo = ref.watch(packageInfoProvider);
-    final repository = ref.watch(repositoryProvider);
     final appRouter = ref.watch(appRouterProvider);
+    final navOps = ref.watch(externalNavigationProvider.notifier);
 
     return Scaffold(
       body: CustomScrollView(
@@ -65,7 +65,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
 
             CustomListTile(
-              title: Environment.dashName,
+              title: AppInfo.appName,
               subTitle: AppLocalizations.of(context)!.settingsAboutLST2,
               leadingWidget: const Icon(Hicon.graphBold),
               onTap: () => appRouter.push(AppRoutes.aboutDashboard),
@@ -83,7 +83,8 @@ class SettingsScreen extends ConsumerWidget {
               subTitle: AppLocalizations.of(context)!.settingsLegalLST1,
               leadingWidget: const Icon(Hicon.documentAlignLeft4Bold),
               trailingIcon: Hicon.linkBold,
-              onTap: () => repository.launchExternalApp(Environment.externalLinkTermsAndConditions),
+              onTap: () =>
+                  navOps.launchExternalApp(ExternalLinks.termsAndConditions),
             ),
 
             CustomListTile(
@@ -91,7 +92,8 @@ class SettingsScreen extends ConsumerWidget {
               subTitle: AppLocalizations.of(context)!.settingsLegalLST2,
               leadingWidget: const Icon(Hicon.documentAlignLeft4Bold),
               trailingIcon: Hicon.linkBold,
-              onTap: () => repository.launchExternalApp(Environment.externalLinkPrivacyPolicy),
+              onTap: () =>
+                  navOps.launchExternalApp(ExternalLinks.privacyPolicy),
             ),
 
             const Gap(AppSpacing.lg),
@@ -124,8 +126,8 @@ class SettingsScreen extends ConsumerWidget {
 
             const ListTile(
               contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              title: Text(Environment.dashName),
-              subtitle: Text(Environment.dashVersion),
+              title: Text(AppInfo.appName),
+              subtitle: Text(AppInfo.appVersion),
               leading: Icon(Hicon.informationCircleBold),
             ),
           ])
@@ -142,9 +144,9 @@ class _DonationBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final repository = ref.watch(repositoryProvider);
     final colors = Theme.of(context).colorScheme;
     final textStyles = Theme.of(context).textTheme;
+    final navOps = ref.watch(externalNavigationProvider.notifier);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.lg),
@@ -185,7 +187,8 @@ class _DonationBanner extends ConsumerWidget {
                   CustomButton.outlined(
                     height: 48,
                     text: AppLocalizations.of(context)!.donationsButton,
-                    onPressed: () => repository.launchExternalApp(Environment.externalLinkBuyMeACoffe),
+                    onPressed: () =>
+                        navOps.launchExternalApp(ExternalLinks.buyMeACoffee),
                   ),
                 ],
               ),

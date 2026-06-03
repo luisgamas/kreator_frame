@@ -19,8 +19,15 @@ class KustomWidgetConfig {
   /// The file extension identifying the widget type (e.g., 'kwgt', 'klwp').
   final String widgetExtension;
 
-  /// External URL/link to launch when tapping a widget card.
+  /// External URL/link to launch when tapping a widget card
+  /// if the target Kustom app is not installed.
   final String externalLink;
+
+  /// Target Kustom app package name for deep linking.
+  final String targetPackage;
+
+  /// Target editor activity to launch within the Kustom app.
+  final String editorActivity;
 
   /// Total height of each grid cell (image area + text section + Card margins).
   /// Controls the [SliverGridDelegateWithFixedCrossAxisCount.mainAxisExtent]
@@ -39,11 +46,19 @@ class KustomWidgetConfig {
   const KustomWidgetConfig({
     required this.widgetExtension,
     required this.externalLink,
+    required this.targetPackage,
+    required this.editorActivity,
     required this.cellHeight,
     required this.previewFit,
     required this.addPadding,
     required this.tabLabel,
   });
+
+  /// Display label for the KWGT tab.
+  static const String kwgtTabLabel = 'KWGT';
+
+  /// Display label for the KLWP tab.
+  static const String klwpTabLabel = 'KLWP';
 
   /// Configuration for KWGT widgets.
   ///
@@ -53,11 +68,13 @@ class KustomWidgetConfig {
   /// cellHeight = 200 (image) + 54 (text section) + 8 (Card margins) = 262dp
   static const kwgt = KustomWidgetConfig(
     widgetExtension: 'kwgt',
-    externalLink: Environment.externalLinkKWGT,
+    externalLink: ExternalLinks.kwgtPlayStore,
+    targetPackage: KustomConfig.pkgKWGT,
+    editorActivity: KustomConfig.activityKWGT,
     cellHeight: 262,
     previewFit: BoxFit.scaleDown,
     addPadding: true,
-    tabLabel: 'KWGT',
+    tabLabel: kwgtTabLabel,
   );
 
   /// Configuration for KLWP live wallpapers.
@@ -67,11 +84,13 @@ class KustomWidgetConfig {
   /// cellHeight = 290 (image) + 54 (text section) + 8 (Card margins) = 352dp
   static const klwp = KustomWidgetConfig(
     widgetExtension: 'klwp',
-    externalLink: Environment.externalLinkKLWP,
+    externalLink: ExternalLinks.klwpPlayStore,
+    targetPackage: KustomConfig.pkgKLWP,
+    editorActivity: KustomConfig.activityKLWP,
     cellHeight: 352,
     previewFit: BoxFit.cover,
     addPadding: false,
-    tabLabel: 'KLWP',
+    tabLabel: klwpTabLabel,
   );
 }
 
@@ -100,7 +119,6 @@ class KustomWidgetsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final repository = ref.watch(repositoryProvider);
     final widgets = ref.watch(getWidgetsProvider(config.widgetExtension));
 
     return widgets.when(
@@ -125,7 +143,7 @@ class KustomWidgetsScreen extends ConsumerWidget {
                   bottomText: widget.nameDeveloper,
                   fitPreview: config.previewFit,
                   addPadding: config.addPadding,
-                  onTap: () => repository.launchExternalApp(config.externalLink),
+                  onTap: () => _handleWidgetTap(context, ref, widget.assetPath),
                 ),
               ),
             );
@@ -139,5 +157,35 @@ class KustomWidgetsScreen extends ConsumerWidget {
         child: CircularProgressIndicator(strokeCap: StrokeCap.round),
       ),
     );
+  }
+
+  /// Tapping a widget card dispatches the work to the dedicated
+  /// presentation-layer notifiers ([kustomOperationsProvider] for the
+  /// installed check / send intent, [externalNavigationProvider] for the
+  /// Play Store fallback) so this widget never reaches into the
+  /// repository directly.
+  Future<void> _handleWidgetTap(
+    BuildContext context,
+    WidgetRef ref,
+    String assetPath,
+  ) async {
+    final kustomOps = ref.read(kustomOperationsProvider.notifier);
+    final navOps = ref.read(externalNavigationProvider.notifier);
+
+    final installed = await kustomOps.isKustomAppInstalled(
+      config.targetPackage,
+    );
+
+    if (!context.mounted) return;
+
+    if (installed) {
+      await kustomOps.sendWidgetToKustomApp(
+        packageName: config.targetPackage,
+        editorActivity: config.editorActivity,
+        assetPath: assetPath,
+      );
+    } else {
+      await navOps.launchExternalApp(config.externalLink);
+    }
   }
 }

@@ -45,6 +45,19 @@ abstract class Repository {
   Future<bool> downloadWallpaper(
     String url,
     String fileName, {
-    void Function(double)? onProgressUpdate,
+    void Function(double?)? onProgressUpdate,
+  });
+
+  /// Cancels the currently active wallpaper download if one is in progress.
+  void cancelDownloadWallpaper();
+
+  /// Checks if a Kustom app (KWGT, KLWP, etc.) is installed on the device.
+  Future<bool> isKustomAppInstalled(String packageName);
+
+  /// Sends a widget/preset to the corresponding Kustom app via an Android Intent.
+  Future<bool> sendWidgetToKustomApp({
+    required String packageName,
+    required String editorActivity,
+    required String assetPath,
   });
 }

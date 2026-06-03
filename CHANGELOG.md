@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+## [v1.6.0] - 2026-06-02
+
+### Fixed
+- **Android native wallpaper picker & chooser permission issues on Xiaomi**: Explicitly granted read URI permissions to resolving packages for `getCropAndSetWallpaperIntent` and `ACTION_ATTACH_DATA` in `WallpapersNativeServices.kt`. Prevents `SecurityException` crashes on customized Android ROMs like MIUI/HyperOS.
+- **MainActivity platform method crash**: Added safety try-catch blocks inside the Main Looper Handler post block in `MainActivity.kt` to handle launch exceptions safely and avoid crashing the app on unsupported devices.
+- **Enabled Android native picker option**: Re-enabled the native wallpaper picker button callback in `WallpaperPreviewScreen` which was previously disabled.
+- **Race condition in `AppValuesPreferencesNotifier`**: Migrated to `AsyncNotifier` so `SharedPreferences` are read before returning any state. Eliminates the theme-flash on app start where the default theme appeared for one frame before the saved preference loaded.
+- **Side effect in `InAppUpdateNotifier.build()`**: Removed the `Future.microtask(() => checkAppForUpdates())` call from `build()` and replaced it with explicit invocation via `ref.read()`. Added `ref.mounted` guards after every `await` in `InAppUpdateNotifier` to prevent `setState()` errors when the widget is disposed during an async operation.
+- **Race condition in `PermissionsNotifier`**: Migrated to `AsyncNotifier` to ensure `_init()` completes before returning the permission state. Eliminates the flash of a "denied" permission button on Android 10+ where storage permissions are granted by default.
+- **Memory leak in `getListOfWidgets()`**: Added an in-memory cache keyed by file extension so repeated calls do not re-parse all ZIP archives from `AssetManifest`. The `Archive` objects are now properly handled, avoiding `Uint8List` retention across calls.
+- **Missing `orElse` in `firstWhere()`**: Replaced `archive.firstWhere(...)` with `firstWhereOrNull` to prevent `StateError` when a ZIP archive does not contain the expected thumbnail file.
+- **`ui.Image` GPU memory leak in `ColorPaletteExtractor`**: Added explicit `.dispose()` calls on `image` and `resizedImage` via `try`/`finally` blocks, ensuring GPU memory is freed immediately after color extraction.
+- **Wallpaper preview full-resolution memory usage**: Limited `CachedNetworkImage` with `memCacheWidth` to cap decoded image size. Changed `InteractiveViewer` to `constrained: true` to prevent loading the full image into memory when zoomed out.
+- **`ref.watch` used in action methods**: Replaced all `ref.watch()` calls with `ref.read()` inside button callbacks (`_applyWallpaper`, `_openChooser`, `_openNativePicker`) in `WallpaperPreviewScreen` to follow Riverpod best practices.
+- **`setKeyValue` fire-and-forget**: Migrating to `AsyncNotifier` ensures preference persistence (SharedPreferences write) completes before the local state is updated, preventing state/persistence desync.
+- **`_activeCancelToken` reference lost on datasource rebuild**: Extracted the `dio.CancelToken` lifecycle out of `DataSourceImpl` into a dedicated `DownloadCancelTokenHolder` service injected via `Provider`. The token now survives any `dataSourceProvider` rebuild (e.g. when `dioProvider` is invalidated), so `cancelDownloadWallpaper()` always operates on the in-flight request. The new holder also handles overlapping downloads safely: registering a new token cancels any previous, still-active one. Covered by 8 unit tests.
+- **Direct repository access from widgets**: Added `WallpaperOperationsNotifier`, `DownloadOperationsNotifier`, `KustomOperationsNotifier`, `ExternalNavigationNotifier` and refactored UI accordingly.
+- **`ThemeModeEntity` with Flutter types in domain layer**: Extracted `ThemeModeOption` pure enum into domain, moved `ThemeMode`/`IconData`/`BuildContext` mapping to presentation via `AppConstants` static helpers. `AppValuesPreferencesState` now stores `ThemeModeOption` with a `themeModeForApp` getter for `MaterialApp`.
+- **`NetworkFailure` dead code**: Eliminated unused `NetworkFailure` entity and its export from `domain.dart`. Current error handling pattern (try/catch with defaults) is functional and consistent.
+- **`KeyValueStorageServicesImpl` instantiated directly in notifier**: Added `keyValueStorageProvider` (`Provider<KeyValueStorageServices>`) in `repository_provider.dart`. `AppValuesPreferencesNotifier` now injects the service via `ref.watch`/`ref.read` instead of creating instances manually. Enables mock testing and follows the project's existing DI pattern.
+- **`MyApp` full-widget rebuilds on any preference change**: Extracted `_MyAppContent` widget that uses `ref.select()` to observe only the specific preference fields needed (`isDynamicColor`, `colorAccentForTheme`, `themeModeForApp`). Changes in unrelated fields (e.g. `dynamicColorAvailable`, `minimalViewForGrids`) no longer trigger MaterialApp rebuilds.
+- **`WallpaperDownloadButton` frequent rebuilds during download**: Extracted `_DownloadProgressIndicator` widget to isolate frequent progress updates. The parent widget uses `ref.select()` to observe only whether a download is active (`progress != null`), while the indicator widget observes the exact progress value. Limits rebuild scope during active downloads.
+- **`Environment` class mixed unrelated responsibilities**: Split the monolithic `Environment` class into 7 focused files: `EnvVars` (.env variables), `StorageKeys` (SharedPreferences keys), `AppInfo` (app name/version/developer), `AssetPaths` (asset paths), `WallpaperConstants` (Android wallpaper flags), `ExternalLinks` (URLs), `KustomConfig` (Kustom app packages). `environment.dart` becomes a barrel export for backward compatibility.
+- **Side effect in `MyApp.build()` with `ref.read`**: Converted `_MyAppContent` to `ConsumerStatefulWidget` and used `addPostFrameCallback` to defer dynamic color availability update after the frame completes, eliminating the `ref.read()` side-effect during `build()`.
+- **Pixel overflow in `CustomSliverAppBar`**: Removed the fixed-height `PreferredSize` wrapper around the `TabBar` in the `SliverAppBar.bottom` property. The `TabBar` now calculates its intrinsic height dynamically, preventing pixel overflow or clipped text on devices with larger system font sizes or varying screen densities.
+
+### Changed
+- **Granular loading states in wallpaper bottom sheet**: Refactored `WallpaperOperationsNotifier` state from `bool` to a custom `WallpaperOperation` enum. This allows the preview bottom sheet to show the progress indicator ONLY on the button initiating the operation, while other options are grayed out safely.
+- **Progressive full-resolution loading in wallpaper preview**: Refactored `_HeroImagePreview` in [wallpaper_preview_screen.dart](file:///C:/Users/Agent/Documents/Projects/kreator_frame/lib/presentation/screens/tertiary/wallpaper_preview_screen.dart) to load the high-resolution image progressively. It displays a memory-optimized 1.5x width preview during the entry transition to ensure 60fps animations, then asynchronously loads the full-resolution image and fades it in using `AnimatedOpacity` once decoded.
+- **Wallpaper preview memory lifecycle control**: Evicts the high-resolution image from Flutter's memory cache (`ImageCache`) in `dispose()` to prevent memory leaks and free up device RAM when leaving the screen.
+- Refactored `TabBarEntity` to a pure domain data entity (type + label) without any Flutter UI types. The `TabsBarAppNotifier` no longer builds widgets; the presentation layer (`HomeScreen`) maps each `TabBarEntity` to its concrete widget via a `switch` on a new `TabBarType` enum. `CustomSliverAppBar` now receives a `List<Tab>` parameter instead of reading the provider itself. Resolves the Clean Architecture violation tracked in `analisis.md` (section 2.1).
+- Applied `const` constructors across multiple widget files to reduce rebuild overhead.
+- `DataSourceImpl` constructor now requires a `DownloadCancelTokenHolder` in addition to `Dio`, formalising dependency injection for the cancel-token lifecycle (see fix above). `dataSourceProvider` wires the holder through a new `downloadCancelTokenHolderProvider`.
+- Updated all files importing `Environment` to use specific constant classes (`EnvVars`, `StorageKeys`, `AppInfo`, `AssetPaths`, `WallpaperConstants`, `ExternalLinks`, `KustomConfig`).
+
+### Performance
+- **SharedPreferences instance caching**: `KeyValueStorageServicesImpl` now caches the `SharedPreferences` singleton via a lazy `_instance` getter with null-coalescing assignment, eliminating redundant `getInstance()` async calls on every read/write operation.
+- **AsyncNotifier migration for race conditions**: `AppValuesPreferencesNotifier`, `InAppUpdateNotifier`, and `PermissionsNotifier` migrated to `AsyncNotifier` pattern, eliminating the "default state flash" at startup and ensuring state consistency.
+- **`ref.select()` for rebuild optimization**: `MyApp` and `WallpaperDownloadButton` now use `ref.select()` to observe only the specific state fields they need, reducing unnecessary widget rebuilds when unrelated state changes.
+
+---
+
 ## [v1.5.3] - 2026-03-07
 
 ### Fixed

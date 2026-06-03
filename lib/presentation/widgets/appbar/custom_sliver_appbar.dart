@@ -12,18 +12,24 @@ import 'package:kreator_frame/l10n/app_localizations.dart';
 import 'package:kreator_frame/presentation/providers/providers.dart';
 import 'package:kreator_frame/presentation/widgets/widgets.dart';
 
-// * Custom App Bar
+/// Sliver app bar used in the main home screen.
+///
+/// The list of [tabs] is provided by the caller so this widget stays
+/// free of any domain-layer types. The presentation layer is responsible
+/// for mapping domain entities into Flutter [Tab] widgets.
 class CustomSliverAppBar extends ConsumerWidget {
+  /// Tabs to render in the bottom [TabBar].
+  final List<Tab> tabs;
+
   const CustomSliverAppBar({
     super.key,
+    required this.tabs,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tabsBar = ref.watch(tabsBarAppProvider);
     final textStyles = Theme.of(context).textTheme;
     final colors = Theme.of(context).colorScheme;
-    final size = MediaQuery.of(context).size;
 
     // * Widget
     return SliverAppBar(
@@ -46,37 +52,15 @@ class CustomSliverAppBar extends ConsumerWidget {
           ),
         ),
       ),
-      bottom: tabsBar.when(
-        data: (data) {
-          return TabBar(
-            labelStyle: textStyles.labelLarge,
-            unselectedLabelStyle: textStyles.labelMedium,
-            labelColor: colors.secondary,
-            indicatorColor: colors.secondary,
-            unselectedLabelColor: colors.outline,
-            splashBorderRadius: AppRadius.radiusSm,
-            tabs: data.map((tabEntity) => tabEntity.tabBar).toList(),
-          );
-        },
-        error: (error, stackTrace) {
-          return PreferredSize(
-            preferredSize: Size.fromHeight( size.height * 0.2),
-            child: const Center(
-              child: Text('Error'),
-            )
-          );
-        },
-        loading: () {
-          return PreferredSize(
-            preferredSize: Size.fromHeight( size.height * 0.2),
-            child: const Center(
-              child: CircularProgressIndicator(
-                strokeCap: StrokeCap.round,
-              ),
-            )
-          );
-        },
-      )
+      bottom: TabBar(
+        labelStyle: textStyles.labelLarge,
+        unselectedLabelStyle: textStyles.labelMedium,
+        labelColor: colors.secondary,
+        indicatorColor: colors.secondary,
+        unselectedLabelColor: colors.outline,
+        splashBorderRadius: AppRadius.radiusSm,
+        tabs: tabs,
+      ),
     );
   }
 }
@@ -110,7 +94,7 @@ class _AppBarWidgets extends ConsumerWidget {
             child: const Image(
               height: 65,
               width: 65,
-              image: AssetImage(Environment.iconPackageLogo),
+              image: AssetImage(AssetPaths.iconPackageLogo),
               fit: BoxFit.cover,
             ),
           ),
@@ -153,14 +137,14 @@ class _AppBarWidgets extends ConsumerWidget {
                   );
                 },
               ),
-        
+
               // Developer info
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Flexible(
                     child: Text(
-                      AppLocalizations.of(context)!.byDeveloper(Environment.userDeveloperName),
+                      AppLocalizations.of(context)!.byDeveloper(EnvVars.userDeveloperName),
                       style: textStyles.bodySmall?.copyWith(
                         color: colors.onSurfaceVariant,
                       ),
@@ -168,7 +152,7 @@ class _AppBarWidgets extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (Environment.userDeveloperName == Environment.dashDeveloper) ...[
+                  if (EnvVars.userDeveloperName == AppInfo.appDeveloper) ...[
                     const Gap(AppSpacing.xxxs),
                     Icon(
                       Hicon.verifiedBold,

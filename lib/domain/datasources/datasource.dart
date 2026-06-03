@@ -53,12 +53,28 @@ abstract class DataSource {
   /// Parameters:
   /// - [url]: URL of the wallpaper to download
   /// - [fileName]: Name of the file to save (without extension)
-  /// - [onProgressUpdate]: Optional callback to track download progress (0.0 to 1.0)
+  /// - [onProgressUpdate]: Optional callback to track download progress (0.0 to 1.0).
+  ///   Receives null when Content-Length is unknown (indeterminate progress).
   ///
   /// Returns [true] if the download was successful, [false] otherwise
   Future<bool> downloadWallpaper(
     String url,
     String fileName, {
-    void Function(double)? onProgressUpdate,
+    void Function(double?)? onProgressUpdate,
+  });
+
+  /// Cancels the currently active wallpaper download if one is in progress.
+  /// Safe to call when no download is active.
+  void cancelDownloadWallpaper();
+
+  /// Checks if a Kustom app (KWGT, KLWP, etc.) is installed on the device.
+  Future<bool> isKustomAppInstalled(String packageName);
+
+  /// Sends a widget/preset to the corresponding Kustom app via an Android Intent.
+  /// Uses the kfile:// URI scheme to trigger direct import into the Kustom editor.
+  Future<bool> sendWidgetToKustomApp({
+    required String packageName,
+    required String editorActivity,
+    required String assetPath,
   });
 }

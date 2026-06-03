@@ -52,6 +52,7 @@
 
   "themeAppBarTitle": "Selector de temas",
   "themeSelector": "Selecciona un tema",
-  "themeColorSelector": "Selecciona un color para el tema"
+  "themeColorSelector": "Selecciona un color para el tema",
+  "themeDynamicColorUnavailable": "Los colores dinámicos no están disponibles en este dispositivo. Usando el color predeterminado."
   
 }

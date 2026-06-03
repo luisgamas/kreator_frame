@@ -138,4 +138,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get themeColorSelector => 'Select a colour for the theme';
+
+  @override
+  String get themeDynamicColorUnavailable =>
+      'Dynamic colours are not available on this device. Using default colour instead.';
 }

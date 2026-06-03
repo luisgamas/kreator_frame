@@ -12,28 +12,28 @@ import 'package:kreator_frame/presentation/providers/providers.dart';
 import 'package:kreator_frame/presentation/widgets/widgets.dart';
 import 'package:kreator_frame/shared/utils/utils.dart';
 
-/// A specialized download button for wallpapers with progress tracking.
+/// A specialized download button for wallpapers with progress tracking and cancel support.
 ///
 /// This widget provides a complete download experience with:
 /// - Loading state with spinning progress indicator
 /// - Download progress with percentage display (0-100%)
+/// - Indeterminate progress when Content-Length is unknown
+/// - Cancel button to abort an active download
 /// - Permission handling (requests storage permission if needed)
 /// - Error handling with snackbar feedback
 /// - Success confirmation
 ///
 /// State management is handled entirely through providers:
-/// - `progressDownloaderProvider`: Tracks download progress (0.0 to 1.0)
-/// - `permissionsProvider`: Manages storage permission state
+/// - `downloadOperationsProvider`: Tracks download progress and exposes the
+///   `download` / `cancel` operations that talk to the repository.
+/// - `permissionsProvider`: Manages storage permission state.
 ///
 /// The widget uses MediaStore API for proper scoped storage support on Android 10+.
 ///
-/// Example:
-/// ```dart
-/// WallpaperDownloadButton(
-///   wallpaperEntity: wallpaper,
-///   iconColor: Colors.white,
-/// )
-/// ```
+/// **Rebuild optimization:** The parent widget uses [ref.select] to observe
+/// only whether a download is active (`progressValue != null`), while the
+/// [_DownloadProgressIndicator] widget observes the exact progress value.
+/// This limits frequent progress updates to the indicator widget only.
 class WallpaperDownloadButton extends ConsumerWidget {
   final WallpaperEntity wallpaperEntity;
   final Color? iconColor;
@@ -46,119 +46,71 @@ class WallpaperDownloadButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final permissions = ref.watch(permissionsProvider);
-    final progress = ref.watch(progressDownloaderProvider);
+    final permissionsAsync = ref.watch(permissionsProvider);
+    // Use ref.select to observe only whether a download is active,
+    // avoiding full-widget rebuilds on every progress tick.
+    final isDownloading = ref.watch(
+      downloadOperationsProvider.select((progress) => progress != null),
+    );
     final colors = Theme.of(context).colorScheme;
 
-    // Determine download state from progress provider
-    final isDownloading = progress != null && progress > 0;
-
-    // Show progress indicator if downloading and progress is available
+    // Show progress indicator with cancel when a download is active
     if (isDownloading) {
-      return _buildProgressIndicator(progress);
+      return _DownloadProgressIndicator(
+        iconColor: iconColor,
+        onCancel: () => _cancelDownload(context, ref, colors),
+      );
     }
 
+    final permissions = permissionsAsync.value;
+    final storageGranted = permissions?.storageGranted ?? false;
+
     return CustomIconButton(
-      onPressed: () => permissions.storageGranted
-        ? _downloadWallpaper(context, ref, colors)
-        : ref.read(permissionsProvider.notifier).requestStoragePermission(),
+      onPressed: () => storageGranted
+          ? _downloadWallpaper(context, ref, colors)
+          : ref.read(permissionsProvider.notifier).requestStoragePermission(),
       icon: Hicon.downloadOutline,
       iconColor: iconColor ?? Colors.white,
       isLoading: false,
     );
   }
 
-  /// Builds a circular progress indicator with percentage text
-  Widget _buildProgressIndicator(double progress) {
-    final percentage = (progress * 100).toStringAsFixed(0);
-
-    return Tooltip(
-      message: '$percentage%',
-      child: SizedBox(
-        height: 48,
-        width: 48,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Circular progress indicator
-            SizedBox(
-              height: 28,
-              width: 28,
-              child: CircularProgressIndicator(
-                value: progress,
-                strokeCap: StrokeCap.round,
-                strokeWidth: 2.5,
-              ),
-            ),
-            // Percentage text
-            Text(
-              percentage,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
+  /// Cancels the active wallpaper download through the operations notifier.
+  void _cancelDownload(
+    BuildContext context,
+    WidgetRef ref,
+    ColorScheme colors,
+  ) {
+    ref.read(downloadOperationsProvider.notifier).cancel();
+    SnackbarHelpers.showSuccess(
+      context: context,
+      message: 'Download cancelled',
+      color: colors,
     );
   }
 
-  /// Download the wallpaper using MediaStore API (Scoped Storage).
+  /// Downloads the wallpaper through the operations notifier.
   ///
-  /// This method does not require permissions on Android 10+ (API 29+) because it uses
-  /// MediaStore to save the image directly to the device gallery.
-  /// Only requires WRITE_EXTERNAL_STORAGE for Android 9 and earlier versions.
-  ///
-  /// Download state is managed through `progressDownloaderProvider`:
-  /// - Progress > 0: Download in progress
-  /// - Progress = 0 or null: Idle state
+  /// This method does not require permissions on Android 10+ (API 29+) because
+  /// the underlying datasource uses MediaStore to save the image directly to
+  /// the device gallery.
   Future<void> _downloadWallpaper(
     BuildContext context,
     WidgetRef ref,
     ColorScheme colors,
   ) async {
-    final repository = ref.read(repositoryProvider);
-    final progressNotifier = ref.read(progressDownloaderProvider.notifier);
+    final success = await ref
+        .read(downloadOperationsProvider.notifier)
+        .download(wallpaperEntity);
 
-    // Initialize download state with a small progress value
-    progressNotifier.changeProgress(0.001);
-
-    try {
-      // Download and save the wallpaper using MediaStore with progress tracking
-      final success = await repository.downloadWallpaper(
-        wallpaperEntity.url.trim(),
-        wallpaperEntity.name,
-        onProgressUpdate: (progress) {
-          // Update the progress in the Riverpod provider (0.0 to 1.0)
-          progressNotifier.changeProgress(progress);
-        },
-      );
-
-      if (context.mounted) {
-        // Reset progress to 0 (idle state)
-        progressNotifier.changeProgress(0);
-
-        if (success) {
-          SnackbarHelpers.showSuccess(
-            context: context,
-            message: AppLocalizations.of(context)!.downloadOk,
-            color: colors,
-          );
-        } else {
-          SnackbarHelpers.showError(
-            context: context,
-            message: AppLocalizations.of(context)!.downloadError,
-            color: colors,
-          );
-        }
-      }
-    } catch (e) {
-      // Reset progress on error
-      progressNotifier.changeProgress(0);
-
-      if (context.mounted) {
+    if (context.mounted) {
+      if (success) {
+        SnackbarHelpers.showSuccess(
+          context: context,
+          message: AppLocalizations.of(context)!.downloadOk,
+          color: colors,
+        );
+      } else {
         SnackbarHelpers.showError(
           context: context,
           message: AppLocalizations.of(context)!.downloadError,
@@ -166,5 +118,80 @@ class WallpaperDownloadButton extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+/// Displays the download progress ring with cancel capability.
+///
+/// This widget observes [downloadOperationsProvider] directly to get the
+/// exact progress value, isolating frequent progress updates from the
+/// parent [WallpaperDownloadButton].
+class _DownloadProgressIndicator extends ConsumerWidget {
+  final Color? iconColor;
+  final VoidCallback onCancel;
+
+  const _DownloadProgressIndicator({
+    required this.iconColor,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final progressValue = ref.watch(downloadOperationsProvider);
+    final isIndeterminate = (progressValue ?? -1) < 0;
+
+    return Tooltip(
+      message: 'Cancel',
+      child: GestureDetector(
+        onTap: onCancel,
+        child: SizedBox(
+          height: 48,
+          width: 48,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (isIndeterminate)
+                const SizedBox(
+                  height: 28,
+                  width: 28,
+                  child: CircularProgressIndicator(
+                    strokeCap: StrokeCap.round,
+                    strokeWidth: 2.5,
+                  ),
+                )
+              else ...[
+                SizedBox(
+                  height: 28,
+                  width: 28,
+                  child: CircularProgressIndicator(
+                    value: progressValue,
+                    strokeCap: StrokeCap.round,
+                    strokeWidth: 2.5,
+                  ),
+                ),
+                Text(
+                  '${((progressValue ?? 0) * 100).toStringAsFixed(0)}%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+              // Cancel icon overlay in top-right
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Icon(
+                  Icons.close,
+                  size: 14,
+                  color: iconColor?.withValues(alpha: 0.7) ?? Colors.white70,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

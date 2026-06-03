@@ -108,6 +108,21 @@ class WallpapersNativeServices(private val context: Context) {
             .getCropAndSetWallpaperIntent(contentUri)
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
+        // Explicitly grant URI read permissions to all packages that can handle this intent
+        // (fixes SecurityException on customized ROMs like Xiaomi's MIUI/HyperOS)
+        try {
+            val resInfoList = context.packageManager.queryIntentActivities(
+                intent,
+                android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
+            )
+            for (resolveInfo in resInfoList) {
+                val packageName = resolveInfo.activityInfo.packageName
+                context.grantUriPermission(packageName, contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         return intent
     }
 
@@ -134,7 +149,24 @@ class WallpapersNativeServices(private val context: Context) {
             putExtra("mimeType", "image/jpeg")
         }
 
-        return Intent.createChooser(attachIntent, null)
+        // Explicitly grant URI read permissions to all packages that can handle the attach intent
+        // (fixes SecurityException on customized ROMs like Xiaomi's MIUI/HyperOS)
+        try {
+            val resInfoList = context.packageManager.queryIntentActivities(
+                attachIntent,
+                android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
+            )
+            for (resolveInfo in resInfoList) {
+                val packageName = resolveInfo.activityInfo.packageName
+                context.grantUriPermission(packageName, contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        val chooserIntent = Intent.createChooser(attachIntent, null)
+        chooserIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        return chooserIntent
     }
 
     private fun downloadImageToFile(url: String): File {

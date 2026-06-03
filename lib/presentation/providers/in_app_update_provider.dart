@@ -28,13 +28,13 @@ class InAppUpdateState {
 }
 
 // * NOTIFIER
-/// Notifier that manages in-app update state and automatically checks
-/// for updates when the provider is first created.
+/// Notifier that manages in-app update state.
+///
+/// Check should be triggered explicitly (e.g., from HomeScreen on mount)
+/// rather than performing side effects during build().
 class InAppUpdateNotifier extends Notifier<InAppUpdateState> {
   @override
   InAppUpdateState build() {
-    // Auto-initialize: Check for updates on first build
-    Future.microtask(() => checkAppForUpdates());
     return InAppUpdateState();
   }
 
@@ -47,11 +47,13 @@ class InAppUpdateNotifier extends Notifier<InAppUpdateState> {
       final repository = ref.read(repositoryProvider);
       final resultOfReviewingUpdates = await repository.checkAppForUpdates();
 
+      if (!ref.mounted) return;
       state = state.copyWith(
         canExecuteUpdate: resultOfReviewingUpdates == 'updateAvailable',
         hasLaunchedUpdate: resultOfReviewingUpdates == 'recovered',
       );
     } catch (e) {
+      if (!ref.mounted) return;
       state = state.copyWith(
         canExecuteUpdate: false,
         hasLaunchedUpdate: false,
@@ -66,11 +68,13 @@ class InAppUpdateNotifier extends Notifier<InAppUpdateState> {
       final repository = ref.read(repositoryProvider);
       final resultOfReviewingUpdates = await repository.executeImmediateAppUpdate();
 
+      if (!ref.mounted) return;
       state = state.copyWith(
         canExecuteUpdate: resultOfReviewingUpdates == 'upToDate' ? false : state.canExecuteUpdate,
         hasLaunchedUpdate: resultOfReviewingUpdates == 'upToDate',
       );
     } catch (e) {
+      if (!ref.mounted) return;
       state = state.copyWith(
         canExecuteUpdate: false,
         hasLaunchedUpdate: false,
@@ -81,7 +85,7 @@ class InAppUpdateNotifier extends Notifier<InAppUpdateState> {
 
 // * PROVIDER
 /// Provider that exposes in-app update state and functionality.
-/// Automatically checks for updates when the app starts.
+/// Check should be triggered explicitly from the UI layer.
 final inAppUpdateProvider = NotifierProvider<InAppUpdateNotifier, InAppUpdateState>(
   InAppUpdateNotifier.new,
 );

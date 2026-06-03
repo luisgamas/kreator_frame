@@ -15,9 +15,11 @@ class ThemeModeSwitcher extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final appValuesFromPreference = ref.watch(appValuesPreferencesProvider);
+    final appValuesAsync = ref.watch(appValuesPreferencesProvider);
     final colors = Theme.of(context).colorScheme;
     final textStyles = Theme.of(context).textTheme;
+
+    final appValuesFromPreference = appValuesAsync.value;
 
     return SliverGrid(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -27,15 +29,15 @@ class ThemeModeSwitcher extends ConsumerWidget {
       ),
       delegate: SliverChildBuilderDelegate(
         (BuildContext context, int index) {
-          
-          final isSelectedThemeMode = AppConstants.themeModeOptions[index].themeMode 
-                == appValuesFromPreference.themeModeForApp;
-                
+          final entity = AppConstants.themeModeOptions[index];
+          final isSelectedThemeMode = appValuesFromPreference != null &&
+              entity.option == appValuesFromPreference.themeModeOption;
+
           return GestureDetector(
             onTap: isSelectedThemeMode
                 ? null
                   : () => ref.read(appValuesPreferencesProvider.notifier)
-                          .setPreferenceForThemeMode(AppConstants.themeModeOptions[index].themeMode),
+                          .setPreferenceForThemeMode(entity.option),
             child: AnimatedContainer(
               duration: AppDurations.normal,
               decoration: BoxDecoration(
@@ -51,12 +53,12 @@ class ThemeModeSwitcher extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    AppConstants.themeModeOptions[index].icon,
+                    AppConstants.iconForThemeMode(entity.option),
                     size: AppIconSizes.md,
                     color: colors.onSurface,
                   ),
                   const Gap(AppSpacing.xxxs),
-                  Text(AppConstants.themeModeOptions[index].title(context),
+                  Text(AppConstants.titleForThemeMode(entity.option)(context),
                       style: textStyles.titleSmall)
                 ],
               ),

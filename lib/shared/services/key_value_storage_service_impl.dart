@@ -8,11 +8,14 @@ import 'key_value_storage_service.dart';
 ///
 /// Provides persistent storage for primitive types (int, String, bool).
 /// Uses SharedPreferences as the underlying storage mechanism.
+/// Caches the SharedPreferences instance after first load for performance.
 class KeyValueStorageServicesImpl extends KeyValueStorageServices {
+  static SharedPreferences? _cachedPrefs;
 
-  /// Gets the SharedPreferences instance.
+  /// Gets the SharedPreferences instance, using cache after first load.
   Future<SharedPreferences> getSharedPreferences() async {
-    return await SharedPreferences.getInstance();
+    _cachedPrefs ??= await SharedPreferences.getInstance();
+    return _cachedPrefs!;
   }
 
 

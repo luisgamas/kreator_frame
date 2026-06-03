@@ -1,24 +1,24 @@
-// 🐦 Flutter imports:
-import 'package:flutter/material.dart';
+/// Pure domain enum representing the available theme mode options.
+/// Free from Flutter UI dependencies — no ThemeMode, no IconData, no BuildContext.
+enum ThemeModeOption {
+  system,
+  light,
+  dark,
+}
 
-/// Entity representing a theme mode option.
-/// Contains a theme mode with its localized title and icon representation.
+/// Pure domain entity representing a theme mode option.
+/// Contains only the enum identifier and a semantic label key.
+/// UI details (icon, localized title) are resolved in the presentation layer.
 class ThemeModeEntity {
-  final ThemeMode themeMode;
-  final String Function(BuildContext) title;
-  final IconData icon;
+  final ThemeModeOption option;
 
-  ThemeModeEntity({
-    required this.themeMode,
-    required this.title,
-    required this.icon,
-  });
+  const ThemeModeEntity({required this.option});
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ThemeModeEntity && other.themeMode == themeMode;
+      other is ThemeModeEntity && other.option == option;
 
   @override
-  int get hashCode => themeMode.hashCode;
+  int get hashCode => option.hashCode;
 }

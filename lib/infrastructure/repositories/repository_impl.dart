@@ -71,12 +71,35 @@ class RepositoryImpl extends Repository {
   Future<bool> downloadWallpaper(
     String url,
     String fileName, {
-    void Function(double)? onProgressUpdate,
+    void Function(double?)? onProgressUpdate,
   }) {
     return dataSource.downloadWallpaper(
       url,
       fileName,
       onProgressUpdate: onProgressUpdate,
+    );
+  }
+
+  @override
+  void cancelDownloadWallpaper() {
+    dataSource.cancelDownloadWallpaper();
+  }
+
+  @override
+  Future<bool> isKustomAppInstalled(String packageName) {
+    return dataSource.isKustomAppInstalled(packageName);
+  }
+
+  @override
+  Future<bool> sendWidgetToKustomApp({
+    required String packageName,
+    required String editorActivity,
+    required String assetPath,
+  }) {
+    return dataSource.sendWidgetToKustomApp(
+      packageName: packageName,
+      editorActivity: editorActivity,
+      assetPath: assetPath,
     );
   }
 }
