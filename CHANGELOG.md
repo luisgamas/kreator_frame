@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- **In-app update system reimplemented**: Replaced fragile `String`-based status protocol with typed `InAppUpdateEntity` + `InAppUpdateAvailability` enum across all layers (datasource → repository → notifier).
+- **`InAppUpdateManager` lifecycle managed via Riverpod DI**: Extracted `InAppUpdateManager` creation from `DataSourceImpl` into a dedicated `inAppUpdateManagerProvider` with `ref.onDispose()` cleanup, eliminating resource leaks.
+- **Rich state machine for update flow**: Replaced two-boolean `InAppUpdateState` with `InAppUpdatePhase` enum covering the full lifecycle: `idle` → `checking` → `available` / `notAvailable` / `failed` → `executing`.
+- **User consent dialog before update**: `HomeScreen` now shows an `AlertDialog` with "Update" / "Later" options instead of silently auto-executing the immediate update flow.
+
+### Fixed
+- **Error swallowing in update operations**: Error messages from `InAppUpdateManager` exceptions are now preserved in `InAppUpdateEntity.errorMessage` and logged via `debugPrint` instead of being replaced by a generic `'error'` string.
+
 ## [v1.6.1] - 2026-06-02
 
 ### Fixed
