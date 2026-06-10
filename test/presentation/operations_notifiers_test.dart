@@ -85,9 +85,11 @@ class FakeRepository implements Repository {
   Future<AppInfoEntity> getAppInformation() =>
       throw UnimplementedError();
   @override
-  Future<String> checkAppForUpdates() => throw UnimplementedError();
+  Future<InAppUpdateEntity> checkAppForUpdates() =>
+      throw UnimplementedError();
   @override
-  Future<String> executeImmediateAppUpdate() => throw UnimplementedError();
+  Future<InAppUpdateEntity> executeImmediateAppUpdate() =>
+      throw UnimplementedError();
   @override
   Future<List<WallpaperEntity>> getListOfWallpapers() =>
       throw UnimplementedError();

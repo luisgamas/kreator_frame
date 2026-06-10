@@ -23,12 +23,12 @@ class RepositoryImpl extends Repository {
   }
 
   @override
-  Future<String> checkAppForUpdates() {
+  Future<InAppUpdateEntity> checkAppForUpdates() {
     return dataSource.checkAppForUpdates();
   }
-  
+
   @override
-  Future<String> executeImmediateAppUpdate() {
+  Future<InAppUpdateEntity> executeImmediateAppUpdate() {
     return dataSource.executeImmediateAppUpdate();
   }
 

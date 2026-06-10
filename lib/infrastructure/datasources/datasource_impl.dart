@@ -20,13 +20,14 @@ import 'package:kreator_frame/shared/services/services.dart';
 /// Handles all data access operations including app info, updates, wallpapers, widgets, and licenses.
 /// Acts as the single point of contact for all data-related operations.
 class DataSourceImpl extends DataSource {
-  final InAppUpdateManager _inAppUpdateManager = InAppUpdateManager();
   final Dio _dio;
   final DownloadCancelTokenHolder _downloadCancelTokenHolder;
+  final InAppUpdateManager _inAppUpdateManager;
 
   DataSourceImpl({
     required this._dio,
     required this._downloadCancelTokenHolder,
+    required this._inAppUpdateManager,
   });
 
   static const _wallpaperChannel = MethodChannel('kreator_frame/wallpaper');
@@ -63,35 +64,60 @@ class DataSourceImpl extends DataSource {
   // ============================================================
 
   /// Checks if an update is available for the application.
-  /// Returns possible values: 'recovered', 'updateAvailable', 'notAvailable', 'error'
+  /// Returns a typed entity instead of a raw string.
   @override
-  Future<String> checkAppForUpdates() async {
+  Future<InAppUpdateEntity> checkAppForUpdates() async {
     try {
       final appUpdateInfo = await _inAppUpdateManager.checkForUpdate();
 
-      if (appUpdateInfo == null) return 'notAvailable';
+      if (appUpdateInfo == null) {
+        return const InAppUpdateEntity(
+          availability: InAppUpdateAvailability.notAvailable,
+        );
+      }
 
       if (appUpdateInfo.updateAvailability ==
           UpdateAvailability.developerTriggeredUpdateInProgress) {
         await _inAppUpdateManager.startAnUpdate(type: AppUpdateType.immediate);
-        return 'recovered';
+        return const InAppUpdateEntity(
+          availability: InAppUpdateAvailability.inProgress,
+        );
       }
 
-      return 'updateAvailable';
+      if (appUpdateInfo.updateAvailability ==
+          UpdateAvailability.updateAvailable) {
+        return const InAppUpdateEntity(
+          availability: InAppUpdateAvailability.available,
+        );
+      }
+
+      return const InAppUpdateEntity(
+        availability: InAppUpdateAvailability.notAvailable,
+      );
     } catch (e) {
-      return 'error';
+      debugPrint('checkAppForUpdates error: $e');
+      return InAppUpdateEntity(
+        availability: InAppUpdateAvailability.failed,
+        errorMessage: e.toString(),
+      );
     }
   }
 
   /// Executes an immediate app update.
-  /// Returns possible values: 'upToDate', 'error'
+  /// Returns a typed entity instead of a raw string.
   @override
-  Future<String> executeImmediateAppUpdate() async {
+  Future<InAppUpdateEntity> executeImmediateAppUpdate() async {
     try {
       await _inAppUpdateManager.startAnUpdate(type: AppUpdateType.immediate);
-      return 'upToDate';
+      return const InAppUpdateEntity(
+        availability: InAppUpdateAvailability.unknown,
+      );
     } catch (e) {
-      return 'error';
+      debugPrint('executeImmediateAppUpdate error: $e');
+      return InAppUpdateEntity(
+        availability: InAppUpdateAvailability.failed,
+        errorMessage: e.toString(),
+      );
     }
   }
 
