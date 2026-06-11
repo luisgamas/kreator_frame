@@ -15,17 +15,23 @@ class CustomSliverAppBarScreens extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final appRouter = ref.watch(appRouterProvider);
+    final textStyles = Theme.of(context).textTheme;
     final colors = Theme.of(context).colorScheme;
+    final appRouter = ref.watch(appRouterProvider);
 
     // * Widget
     return SliverAppBar.large(
-        pinned: true,
-        leading: CustomIconButton(
-            onPressed: () => appRouter.pop(),
-            icon: Hicon.left1Bold,
-            iconColor: colors.onSurface,
-          ),
-        title: Text(tileText));
+      pinned: true,
+      leading: CustomIconButton(
+        onPressed: () => appRouter.pop(),
+        icon: Hicon.left1Bold,
+        iconColor: colors.onSurface,
+        tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+      ),
+      title: Text(
+        tileText,
+        style: textStyles.titleLarge,
+      ),
+    );
   }
 }
