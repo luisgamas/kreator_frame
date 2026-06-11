@@ -32,7 +32,7 @@ class CustomSliverAppBar extends ConsumerWidget {
     final appRouter = ref.watch(appRouterProvider);
 
     // * Widget
-    return SliverAppBar.large(
+    return SliverAppBar.medium(
       pinned: true,
       title: packageAppInfo.when(
         data: (data) => Column(
