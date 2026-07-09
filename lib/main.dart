@@ -13,6 +13,12 @@ import 'package:kreator_frame/l10n/app_localizations.dart';
 import 'package:kreator_frame/presentation/providers/providers.dart';
 import 'package:kreator_frame/shared/utils/utils.dart';
 
+/// Number of consecutive frames a dynamic scheme must fail validation before
+/// we report dynamic color as unavailable. This absorbs transient null/degenerate
+/// schemes (common on Samsung during a transition) so the warning banner does not
+/// flicker for a single frame.
+const int _kDynamicUnavailableFrameThreshold = 5;
+
 /// Entry point of the Kreator Frame application.
 ///
 /// Initializes Flutter bindings, sets portrait orientation, loads environment
@@ -72,22 +78,18 @@ class _MyAppContent extends ConsumerStatefulWidget {
 }
 
 class _MyAppContentState extends ConsumerState<_MyAppContent> {
+  /// Counts consecutive frames where dynamic color failed to validate.
+  ///
+  /// On some devices (e.g. Samsung) the [DynamicColorBuilder] may momentarily
+  /// provide a null/degenerate scheme during a transition, which would make us
+  /// flicker the "unavailable" banner for a single frame. We only report
+  /// dynamic color as unavailable after it has failed on several consecutive
+  /// frames, so a transient glitch is ignored.
+  int _dynamicUnavailableFrames = 0;
+
   @override
   void initState() {
     super.initState();
-    // Schedule the dynamic color validation after the first frame so the
-    // DynamicColorBuilder has had a chance to provide the color schemes.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _validateDynamicColor();
-    });
-  }
-
-  /// Reads the current dynamic color schemes from [DynamicColorBuilder]
-  /// and updates the notifier with the availability status.
-  void _validateDynamicColor() {
-    // This method is called once after init and whenever the theme changes.
-    // The actual validation logic lives in the notifier.
-    // We just need to trigger it with the current context.
   }
 
   @override
@@ -109,15 +111,26 @@ class _MyAppContentState extends ConsumerState<_MyAppContent> {
         final validatedLight = isDynamic ? DynamicColorValidator.validate(lightDynamic) : null;
         final validatedDark = isDynamic ? DynamicColorValidator.validate(darkDynamic) : null;
 
-        // Track whether dynamic colors actually loaded for the UI
+        // Track whether dynamic colors actually loaded for the UI. We validate
+        // both brightness schemes; either one being usable means dynamic color
+        // is available on this device.
         final dynamicAvailable = validatedLight != null || validatedDark != null;
-        if (isDynamic && !dynamicAvailable) {
-          debugPrint('[DynamicColor] Device returned null or degenerate scheme — using fallback seed color');
-        }
 
-        // Update notifier after the build completes to avoid side-effects in build()
+        // Update notifier after the build completes to avoid side-effects in
+        // build(). Use a frame counter so a transient null/degenerate scheme
+        // (common on Samsung during a transition) does not flicker the
+        // "unavailable" banner for a single frame.
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          ref.read(appValuesPreferencesProvider.notifier).updateDynamicColorAvailability(dynamicAvailable);
+          if (dynamicAvailable) {
+            _dynamicUnavailableFrames = 0;
+          } else {
+            _dynamicUnavailableFrames++;
+          }
+          final reportAvailable = dynamicAvailable ||
+              _dynamicUnavailableFrames < _kDynamicUnavailableFrameThreshold;
+          ref
+              .read(appValuesPreferencesProvider.notifier)
+              .updateDynamicColorAvailability(reportAvailable);
         });
 
         final lightTheme = AppTheme(
