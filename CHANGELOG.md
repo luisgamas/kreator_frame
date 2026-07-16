@@ -6,14 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+---
+
+## [v1.7.0] - 2026-07-16
+
 ### Changed
 - **In-app update system reimplemented**: Replaced fragile `String`-based status protocol with typed `InAppUpdateEntity` + `InAppUpdateAvailability` enum across all layers (datasource → repository → notifier).
 - **`InAppUpdateManager` lifecycle managed via Riverpod DI**: Extracted `InAppUpdateManager` creation from `DataSourceImpl` into a dedicated `inAppUpdateManagerProvider` with `ref.onDispose()` cleanup, eliminating resource leaks.
 - **Rich state machine for update flow**: Replaced two-boolean `InAppUpdateState` with `InAppUpdatePhase` enum covering the full lifecycle: `idle` → `checking` → `available` / `notAvailable` / `failed` → `executing`.
 - **User consent dialog before update**: `HomeScreen` now shows an `AlertDialog` with "Update" / "Later" options instead of silently auto-executing the immediate update flow.
+- **`CustomSliverAppBar` inlined into `SliverAppBar.large`**: Removed the separate app-bar widget wrappers and inlined them into a single `SliverAppBar` with an async-loaded title, removing ~137 lines and flattening the widget tree.
+- **`SliverAppBar` collapsed size reduced to `.medium`**: Tuned the app bar size to `.medium` for better visual consistency across screens, accounting for the double title and the tab bar.
+- **Theme debug logging removed**: Dropped the temporary `[DynamicColor]` debug prints and the raw-scheme logger from `main.dart` and trimmed the verbose comments in `DynamicColorValidator`. The Samsung/Xiaomi surface-container ramp repair logic is unchanged.
 
 ### Fixed
 - **Error swallowing in update operations**: Error messages from `InAppUpdateManager` exceptions are now preserved in `InAppUpdateEntity.errorMessage` and logged via `debugPrint` instead of being replaced by a generic `'error'` string.
+
+### Build
+- **Flutter/Dart SDK constraints loosened**: `environment.sdk` is now `>=3.12.0` and `environment.flutter` is now `>=3.44.0` (open upper bounds) so `flutter pub get`/`run` work on any compatible SDK instead of failing against an exact pin. Lower bounds preserve the minimum versions the code relies on (`Color.withValues`, `WidgetStateProperty`).
+- **CI Flutter version pinned in the deploy workflow**: The `Deploy AAB to Google Play` workflow now sets `flutter-version: 3.44.0` explicitly instead of reading `flutter-version-file: pubspec.yaml`. The version-file option requires an exact version and is incompatible with the loosened range above; pinning in CI keeps builds deterministic while pubspec stays flexible.
+
+---
 
 ## [v1.6.1] - 2026-06-02
 

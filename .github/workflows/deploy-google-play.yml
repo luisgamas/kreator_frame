@@ -26,7 +26,12 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version-file: pubspec.yaml
+          # Pin the exact Flutter version here instead of reading it from
+          # pubspec.yaml. `flutter-version-file` requires an EXACT version in
+          # `environment.flutter`, but pubspec now uses an open range
+          # (`>=3.44.0`) so the app builds on any compatible SDK locally.
+          # Pinning here keeps CI deterministic without re-pinning pubspec.
+          flutter-version: '3.44.0'
           channel: 'stable'
           cache: true # <-- Cachea el SDK de Flutter y el pub cache
 
