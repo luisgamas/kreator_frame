@@ -1,8 +1,5 @@
-- Corregidos fallos del selector en Xiaomi y ROMs personalizados
-- Solucionados destellos, fugas de memoria y condiciones de carrera
-- Vista previa más rápida con carga progresiva en alta resolución
-- Mejor gestión de memoria y extracción de colores
-- Navegación más fluida con ref.select()
-- Gestión de estado mejorada con buenas prácticas de Riverpod 3.x
-- Refactorizada Environment en constantes de responsabilidad única
-- Mejoras generales de estabilidad, rendimiento y calidad
+- Nuevo: elige "Actualizar" o "Más tarde" cuando haya una actualización disponible
+- Flujo de actualización más fiable y con mejor manejo de errores
+- Barra superior y pestañas refinadas para mayor consistencia visual
+- Inicio más fluido y estable, y color dinámico en Samsung/Xiaomi
+- Mejoras generales de rendimiento y calidad de código

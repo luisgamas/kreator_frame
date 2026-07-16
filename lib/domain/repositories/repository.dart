@@ -15,10 +15,10 @@ abstract class Repository {
   Future<AppInfoEntity> getAppInformation();
 
   /// Checks if there are updates available for the application.
-  Future<String> checkAppForUpdates();
+  Future<InAppUpdateEntity> checkAppForUpdates();
 
   /// Executes an immediate in-app update.
-  Future<String> executeImmediateAppUpdate();
+  Future<InAppUpdateEntity> executeImmediateAppUpdate();
 
   /// Sets a wallpaper from a URL to the device.
   Future<bool> setWallpaper(String url, int location);

@@ -1,5 +1,9 @@
+// 🐦 Flutter imports:
+import 'package:flutter/foundation.dart' show debugPrint;
+
 // 📦 Package imports:
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_upgrade_version/flutter_upgrade_version.dart';
 
 // 🌎 Project imports:
 import 'package:kreator_frame/domain/domain.dart';
@@ -31,16 +35,32 @@ final downloadCancelTokenHolderProvider =
   return holder;
 });
 
+/// Provider for the InAppUpdateManager instance.
+///
+/// Keeps a single manager alive for the app's lifetime via `ref.keepAlive()`
+/// and logs cleanup on disposal. The manager is created once and reused
+/// across check and execute calls to respect the Play Core API guidelines.
+final inAppUpdateManagerProvider = Provider<InAppUpdateManager>((ref) {
+  final manager = InAppUpdateManager();
+  ref.onDispose(() {
+    debugPrint('InAppUpdateManager disposed');
+  });
+  return manager;
+});
+
 /// Provider for the application's DataSource.
-/// Injects the Dio client via [dioProvider] and the cancel token holder via
-/// [downloadCancelTokenHolderProvider] following Riverpod DI patterns.
+/// Injects the Dio client via [dioProvider], the cancel token holder via
+/// [downloadCancelTokenHolderProvider], and the in-app update manager via
+/// [inAppUpdateManagerProvider] following Riverpod DI patterns.
 final dataSourceProvider = Provider<DataSource>((ref) {
   final dio = ref.watch(dioProvider);
   final downloadCancelTokenHolder =
       ref.watch(downloadCancelTokenHolderProvider);
+  final inAppUpdateManager = ref.watch(inAppUpdateManagerProvider);
   return DataSourceImpl(
     dio: dio,
     downloadCancelTokenHolder: downloadCancelTokenHolder,
+    inAppUpdateManager: inAppUpdateManager,
   );
 });
 

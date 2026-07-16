@@ -31,9 +31,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Trigger update check explicitly on first mount
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(inAppUpdateProvider.notifier).checkAppForUpdates();
+      ref.read(inAppUpdateProvider.notifier).checkForUpdates();
     });
   }
 
@@ -41,10 +40,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final tabsBar = ref.watch(tabsBarAppProvider);
 
-    // Auto-execute immediate update when available
-    ref.listen(inAppUpdateProvider, (previous, next) async {
-      if (next.canExecuteUpdate && !next.hasLaunchedUpdate) {
-        await ref.read(inAppUpdateProvider.notifier).executeImmediateAppUpdate();
+    // Show a dialog when an update is available so the user can choose
+    // whether to proceed. Google Play will show its own confirmation
+    // overlay once the user taps "Update".
+    ref.listen(inAppUpdateProvider, (previous, next) {
+      if (next.phase == InAppUpdatePhase.available) {
+        _showUpdateAvailableDialog();
       }
     });
 
@@ -76,6 +77,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
+  }
+
+  /// Shows a user-facing dialog when a new version is available.
+  ///
+  /// Tapping "Update" triggers the immediate update flow; tapping "Later"
+  /// leaves the state in [InAppUpdatePhase.available] so the dialog can
+  /// be shown again on a future app launch.
+  Future<void> _showUpdateAvailableDialog() async {
+    final shouldUpdate = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Update Available'),
+        content: const Text(
+          'A new version is available. Would you like to update now?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Later'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldUpdate == true && context.mounted) {
+      ref.read(inAppUpdateProvider.notifier).executeUpdate();
+    }
   }
 
   /// Maps a pure domain [TabBarEntity] into a concrete widget.

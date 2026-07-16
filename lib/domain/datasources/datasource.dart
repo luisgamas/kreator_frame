@@ -12,12 +12,12 @@ abstract class DataSource {
   Future<AppInfoEntity> getAppInformation();
 
   /// Checks if there are updates available for the application.
-  /// Returns a string indicating update status.
-  Future<String> checkAppForUpdates();
+  /// Returns a typed entity indicating update availability.
+  Future<InAppUpdateEntity> checkAppForUpdates();
 
   /// Executes an immediate in-app update.
-  /// Returns a string indicating the update result.
-  Future<String> executeImmediateAppUpdate();
+  /// Returns a typed entity indicating the update result.
+  Future<InAppUpdateEntity> executeImmediateAppUpdate();
 
   /// Sets a wallpaper from a URL to the device.
   /// [location] indicates where to apply (home screen, lock screen, both).
